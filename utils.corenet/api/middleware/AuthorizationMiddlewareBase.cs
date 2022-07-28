@@ -95,7 +95,7 @@ namespace es.dmoreno.utils.corenet.api.middleware
         static protected string GetAuthorizationType(HttpContext context)
         {
             //Formato
-            //Forma de realizar checkeo (start o regex)
+            //Forma de realizar checkeo (start o equal)
             //Recurso
             //Metodo
             //Tipo de autorizacion
@@ -110,6 +110,16 @@ namespace es.dmoreno.utils.corenet.api.middleware
                     if (ResourcesByTypeWithAuthorization[i + 2].Equals(method))
                     {
                         if (ResourcesByTypeWithAuthorization[i + 1].Equals(res))
+                        {
+                            return ResourcesByTypeWithAuthorization[i + 3];
+                        }
+                    }
+                }
+                else if (ResourcesByTypeWithAuthorization[i].Equals("start"))
+                {
+                    if (ResourcesByTypeWithAuthorization[i + 2].Equals(method))
+                    {
+                        if (res.StartsWith(ResourcesByTypeWithAuthorization[i + 1]))
                         {
                             return ResourcesByTypeWithAuthorization[i + 3];
                         }
