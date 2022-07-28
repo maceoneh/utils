@@ -4,6 +4,7 @@ using es.dmoreno.utils.security;
 using es.dmoreno.utils.serialize;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -28,6 +29,14 @@ namespace es.dmoreno.utils.corenet.api.middleware
             //Forma de realizar checkeo (start o regex)
             //Recurso
             //Metodo
+        };
+
+        static protected string[] ResourcesByTypeWithAuthorization { get; set; } = new string[]
+        {
+            //Forma de realizar checkeo (start o regex)
+            //Recurso
+            //Metodo
+            //Tipo de autorizacion
         };
 
         public AuthorizationMiddlewareBase(RequestDelegate next)
@@ -81,6 +90,33 @@ namespace es.dmoreno.utils.corenet.api.middleware
                 }
             }
             return true;
+        }
+
+        static protected string GetAuthorizationType(HttpContext context)
+        {
+            //Formato
+            //Forma de realizar checkeo (start o regex)
+            //Recurso
+            //Metodo
+            //Tipo de autorizacion
+
+            var res = context.Request.Path.Value;
+            var method = context.Request.Method;
+
+            for (int i = 0; i < ResourcesByTypeWithAuthorization.Length; i = i + 4)
+            {
+                if (ResourcesByTypeWithAuthorization[i].Equals("equal"))
+                {
+                    if (ResourcesByTypeWithAuthorization[i + 2].Equals(method))
+                    {
+                        if (ResourcesByTypeWithAuthorization[i + 1].Equals(res))
+                        {
+                            return ResourcesByTypeWithAuthorization[i + 3];
+                        }
+                    }
+                }
+            }
+            return "";
         }
 
         public async Task Invoke(HttpContext context)

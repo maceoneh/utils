@@ -14,7 +14,7 @@ namespace es.dmoreno.utils.api
         [DataMember(Name = "token")]
         public string Token { get; set; }
 
-        [DataMember(Name = "request", IsRequired = true)]
-        public T Request { get; set; }
+        [DataMember(Name = "parameters", IsRequired = true)]
+        public T Parameters { get; set; }
     }
 }

@@ -29,7 +29,7 @@ namespace es.dmoreno.utils.apps.masterrecords
             }
         }
 
-        public async Task<T> getAsync(string key)
+        public async Task<T> getAsync(string key, bool initialize_if_no_exists = false)
         {
             T v;
 
@@ -38,6 +38,15 @@ namespace es.dmoreno.utils.apps.masterrecords
                 v = await db.Statement.FirstIfExistsAsync<T>(" AND key = @k", null, new List<StatementParameter>() {
                     new StatementParameter("@k", ParamType.String, key)
                 });
+                if (v == null)
+                {
+                    if (initialize_if_no_exists)
+                    {
+                        var p = new T() { Key = key, Value = "" };
+                        await db.Statement.insertAsync(p);
+                        return p;
+                    }
+                }
             }
 
             return v;
