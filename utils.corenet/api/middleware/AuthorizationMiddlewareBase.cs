@@ -31,6 +31,14 @@ namespace es.dmoreno.utils.corenet.api.middleware
             //Metodo
         };
 
+        /// <summary>
+        /// Listado de criterios que debe cumplir una URL para no ser verificada:
+        /// 
+        /// * Forma de realizar checkeo (start o regex)
+        /// * Recurso
+        /// * Método
+        /// * Tipo de autorizacion
+        /// </summary>
         static protected string[] ResourcesByTypeWithAuthorization { get; set; } = new string[]
         {
             //Forma de realizar checkeo (start o regex)
@@ -184,12 +192,20 @@ namespace es.dmoreno.utils.corenet.api.middleware
             }
         }
 
+        /// <summary>
+        /// Metodo que se ejecuta antes de obtener el tipo de autenticacion del paquete http, se usa para extraer el token por ejemplo del body
+        /// </summary>
+        protected virtual void ExtractAuthorizationFromBody()
+        { }
+
         private void extractAuthorizationType(HttpContext context)
         {
             StringValues headauth;
             string auth;
 
             this.authsended = true;
+
+            this.ExtractAuthorizationFromBody();
 
             if (context.Request.Headers.TryGetValue("Authorization", out headauth))
             {
@@ -229,6 +245,7 @@ namespace es.dmoreno.utils.corenet.api.middleware
             }
             else
             {
+
                 context.Request.Headers.Add("_auth_type", "");
                 context.Items.Add("_auth_type", "");
                 authsended = false;
