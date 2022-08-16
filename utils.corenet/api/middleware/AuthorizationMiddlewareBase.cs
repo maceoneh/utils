@@ -195,7 +195,7 @@ namespace es.dmoreno.utils.corenet.api.middleware
         /// <summary>
         /// Metodo que se ejecuta antes de obtener el tipo de autenticacion del paquete http, se usa para extraer el token por ejemplo del body
         /// </summary>
-        protected virtual void ExtractAuthorizationFromBody()
+        protected virtual void ExtractAuthorizationFromBody(HttpContext context)
         { }
 
         private void extractAuthorizationType(HttpContext context)
@@ -205,7 +205,7 @@ namespace es.dmoreno.utils.corenet.api.middleware
 
             this.authsended = true;
 
-            this.ExtractAuthorizationFromBody();
+            this.ExtractAuthorizationFromBody(context);
 
             if (context.Request.Headers.TryGetValue("Authorization", out headauth))
             {

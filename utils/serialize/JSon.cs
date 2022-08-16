@@ -35,9 +35,14 @@ namespace es.dmoreno.utils.serialize
             byte[] array;
             string result;
 
+            var settings = new DataContractJsonSerializerSettings
+            {
+                DateTimeFormat = new System.Runtime.Serialization.DateTimeFormat("yyyy-MM-ddTHH:mm:ssK"),
+            };
+
             using (ms = new MemoryStream())
             {
-                ser = new DataContractJsonSerializer(typeof(T));
+                ser = new DataContractJsonSerializer(typeof(T), settings);
                 ser.WriteObject(ms, obj);
                 array = ms.ToArray();
                 result = Encoding.UTF8.GetString(array, 0, array.Length);
