@@ -32,6 +32,7 @@ namespace es.dmoreno.utils.dataaccess.db
 
         public override async Task<bool> createAlterTableAsync<T>()
         {
+            this.LastAction = EManagementAction.None;
             T t;
             TableAttribute table_att;
             bool result;
@@ -68,6 +69,7 @@ namespace es.dmoreno.utils.dataaccess.db
                     var mgt = new SQLiteManagement(fptstatement);
                     mgt.IgnoreFilePerTable = true;
                     create = await mgt.createAlterTableAsync<T>();
+                    this.LastAction = mgt.LastAction;
                 }
                 if (create)
                 {
@@ -141,7 +143,7 @@ namespace es.dmoreno.utils.dataaccess.db
 
                 sql += ")";
 
-                await this.Statement.executeNonQueryAsync(sql);
+                await this.Statement.executeNonQueryAsync(sql);                
             }
 
             //Check if fields exists
@@ -165,6 +167,7 @@ namespace es.dmoreno.utils.dataaccess.db
                     sql = "ALTER TABLE " + table_att.Name + " ADD COLUMN " + this.getCreateFieldSQLite(item, false);
                     await this.Statement.executeNonQueryAsync(sql);
                     result = true;
+                    this.LastAction = EManagementAction.AlterTable;
                 }   
             }
 
@@ -227,7 +230,13 @@ namespace es.dmoreno.utils.dataaccess.db
                     }
                     sql += ")";
                     await this.Statement.executeNonQueryAsync(sql);
+                    this.LastAction = EManagementAction.AlterTable;
                 }
+            }
+
+            if (new_table)
+            {
+                this.LastAction = EManagementAction.CreateTable;
             }
 
             return result;

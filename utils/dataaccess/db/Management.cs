@@ -10,6 +10,8 @@ namespace es.dmoreno.utils.dataaccess.db
     {
         private SQLStatement _s;
 
+        public EManagementAction LastAction { get; protected set; } = EManagementAction.None;
+
         protected SQLStatement Statement { get { return this._s; } }
 
         internal Management(SQLStatement s)
