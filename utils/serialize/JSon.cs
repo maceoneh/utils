@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Json;
@@ -8,6 +9,12 @@ namespace es.dmoreno.utils.serialize
 {
     static public class JSon
     {
+        static public T JObjectToType<T>(JObject jo) where T : class
+        {            
+            var o = jo.ToObject(typeof(T));
+            return o as T;
+        }
+        
         static public T deserializeJSON<T>(string json) where T : class
         {
             MemoryStream ms;
