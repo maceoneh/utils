@@ -501,7 +501,8 @@ namespace es.dmoreno.utils.dataaccess.db
                                 FieldName = att_dbfield.FieldName,
                                 FieldType = att_dbfield.Type,
                                 TableName = table_att.Name,
-                                FilterName = att_dbfilter.Name
+                                FilterName = att_dbfilter.Name,
+                                AllowNull = att_dbfield.AllowNull
                             });
                         }
                     }

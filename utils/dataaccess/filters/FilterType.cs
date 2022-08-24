@@ -14,6 +14,11 @@ namespace es.dmoreno.utils.dataaccess.filters
         Like = 5,
         Between = 6,
         NotEqual = 7,
-        In = 8
+        In = 8,
+
+        /// <summary>
+        /// Realiza la comprobación IS NULL cuando es posible
+        /// </summary>
+        IsNULL = 9
     }
 }

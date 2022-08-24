@@ -594,7 +594,7 @@ namespace es.dmoreno.utils.dataaccess.db
                     throw new Exception("Param type is not supported");
             }
 
-            SqliteParameter p = new SqliteParameter(name, t);
+            SqliteParameter p = new SqliteParameter(name, t);            
             p.Value = value;
             this._parameters.Add(p);
         }
@@ -902,7 +902,7 @@ namespace es.dmoreno.utils.dataaccess.db
             c = new ConfigStatement() { SQL = "", Params = new List<StatementParameter>() };
             fields = new List<string>();
             fields_pk = new List<string>();
-            
+
             //Get table attribute from class
             table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
 
@@ -961,7 +961,11 @@ namespace es.dmoreno.utils.dataaccess.db
                         {
                             item.castStringValue(dbfilter.FieldType);
                         }
-                        if (item.Type != FilterType.In)
+                        if (item.ObjectValue == null)
+                        {
+                            item.Type = FilterType.IsNULL;
+                        }
+                        if (item.Type != FilterType.In && item.Type != FilterType.IsNULL)
                         {
                             c.FilterParams.Add(new StatementParameter("@ft" + c.FilterParams.Count, dbfilter.FieldType, item.ObjectValue));
                         }
@@ -983,6 +987,8 @@ namespace es.dmoreno.utils.dataaccess.db
                                 aux3 += " >= "; break;
                             case FilterType.Like:
                                 aux3 += " LIKE "; break;
+                            case FilterType.IsNULL:
+                                aux3 += " IS NULL "; break;
                             case FilterType.Between:
                                 aux3 += " BETWEEN @ft" + (c.FilterParams.Count - 1).ToString(); ;
                                 c.FilterParams.Add(new StatementParameter("@ft" + c.FilterParams.Count, dbfilter.FieldType, item.ObjectValue2));
@@ -994,6 +1000,7 @@ namespace es.dmoreno.utils.dataaccess.db
                             default:
                                 throw new NotImplementedException();
                         }
+
                         if (item.Type == FilterType.In)
                         {
                             if (dbfilter.FieldType == ParamType.Int32)
@@ -1006,7 +1013,7 @@ namespace es.dmoreno.utils.dataaccess.db
                                 throw new Exception("Filter on '" + dbfilter.TableName + "." + dbfilter.FieldName + "' not support type " + item.Type + " value");
                             }
                         }
-                        else
+                        else if (item.Type != FilterType.IsNULL)
                         {
                             aux3 += "@ft" + (c.FilterParams.Count - 1).ToString();
                         }
@@ -1061,7 +1068,7 @@ namespace es.dmoreno.utils.dataaccess.db
 
             return c;
         }
-                
+
         private bool isNull(FieldAttribute att, object o)
         {
             var result = false;
@@ -1119,7 +1126,7 @@ namespace es.dmoreno.utils.dataaccess.db
             {
                 //Create SQL parameters                
                 att = props.DBFieldAttributes[item_count];
-                item_count++; 
+                item_count++;
                 if (att != null)
                 {
                     value = item.GetValue(registry);
@@ -1417,7 +1424,7 @@ namespace es.dmoreno.utils.dataaccess.db
             T t;
             TableAttribute table_att;
             string sql;
-            
+
             t = new T();
 
             //Get table attribute from class
@@ -1973,7 +1980,7 @@ namespace es.dmoreno.utils.dataaccess.db
 
                     if (field != null)
                     {
-                        sql += " AND " + field.FieldName + " = @var" + count.ToString();                        
+                        sql += " AND " + field.FieldName + " = @var" + count.ToString();
                         parameters.Add(new StatementParameter("@var" + count.ToString(), field.Type, item.GetValue(options.List[0])));
                         count++;
                     }
