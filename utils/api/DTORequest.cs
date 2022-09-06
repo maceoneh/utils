@@ -1,20 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.Serialization;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace es.dmoreno.utils.api
 {
-    [DataContract]
     public class DTORequest<T>
     {
-        [DataMember(Name = "version", IsRequired = false)]
+        [JsonPropertyName("version")]
         public int Version { get; set; } = 0;
 
-        [DataMember(Name = "token")]
+        [JsonPropertyName("token")]
         public string Token { get; set; }
 
-        [DataMember(Name = "parameters", IsRequired = true)]
+        [JsonPropertyName("parameters")]
         public T Parameters { get; set; }
     }
 }
