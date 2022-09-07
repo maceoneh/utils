@@ -3,19 +3,19 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.Json.Serialization;
 
 namespace es.dmoreno.utils.api
 {
-    [DataContract]
     public class DTOResponse<T>
     {
-        [DataMember(Name = "version", IsRequired = false)]
+        [JsonPropertyName("version")]
         public int Version { get; set; } = 0;
 
-        [DataMember(Name = "response")]
+        [JsonPropertyName("response")]
         public T Response { get; set; }
 
-        [DataMember(Name = "error", IsRequired = false)]
+        [JsonPropertyName("error")]
         public DTOError Error { get; set; } = null;        
     }
 }
