@@ -38,6 +38,8 @@ namespace es.dmoreno.utils.permissions
             await this.DBLogic.Management.createAlterTableAsync<DTOAction>();
             await this.DBLogic.Management.createAlterTableAsync<DTOPermission>();
             await this.DBLogic.Management.createAlterTableAsync<DTOSubjectHasPermission>();
+            await this.DBLogic.Management.createAlterTableAsync<DTOGroup>();
+            await this.DBLogic.Management.createAlterTableAsync<DTOSubjectPertainGroup>();
         }
 
         public async Task<DTOEntity> AddEntityAsync(string name)
@@ -75,6 +77,24 @@ namespace es.dmoreno.utils.permissions
             return action_in_db;
         }
 
+        public async Task<DTOGroup> AddGroupAsync(string name, string uuid)
+        {
+            name = name.ToUpper().Trim();
+            var db_group = await this.DBLogic.ProxyStatement<DTOGroup>();
+            var action_in_db = await db_group.FirstIfExistsAsync<DTOGroup>(new StatementOptions
+            {
+                Filters = new List<Filter> {
+                    new Filter { Name = DTOGroup.FilterRemoteUUID, ObjectValue = uuid, Type = FilterType.Equal }
+                }
+            });
+            if (action_in_db == null)
+            {
+                action_in_db = new DTOGroup { Name = name, RemoteUUID = uuid };
+                await db_group.insertAsync(action_in_db);
+            }
+            return action_in_db;
+        }
+
         public async Task<DTOPermission> AddPermissionAsync(DTOEntity e, DTOAction a, string description)
         {
             description = description.ToUpper().Trim();
@@ -105,12 +125,12 @@ namespace es.dmoreno.utils.permissions
             return permision_in_db;
         }
 
-        public async Task<DTOSubjectHasPermission> AddSubjectToPermission(DTOPermission p, int id_subject)
+        public async Task<DTOSubjectHasPermission> AddSubjectToPermission(DTOPermission p, string remote_uuid)
         {
             var db_subject_has_permission = await this.DBLogic.ProxyStatement<DTOSubjectHasPermission>();
             var subject_permission = await db_subject_has_permission.FirstIfExistsAsync<DTOSubjectHasPermission>(new StatementOptions { 
                 Filters = new List<Filter> { 
-                    new Filter { Name = DTOSubjectHasPermission.FilterRefSubject, ObjectValue = id_subject, Type = FilterType.Equal },
+                    new Filter { Name = DTOSubjectHasPermission.FilterRemoteUUID, ObjectValue = remote_uuid, Type = FilterType.Equal },
                     new Filter { Name = DTOSubjectHasPermission.FilterRefEntity, ObjectValue = p.RefEntity, Type = FilterType.Equal },
                     new Filter { Name = DTOSubjectHasPermission.FilterRefAction, ObjectValue = p.RefAction, Type = FilterType.Equal }
                 }
@@ -122,7 +142,7 @@ namespace es.dmoreno.utils.permissions
                     Permission = p.CopyTo(new DTOPermission()),
                     RefAction = p.RefAction,
                     RefEntity = p.RefEntity,
-                    RefSubject = id_subject
+                    RemoteUUID = remote_uuid
                 };
                 await db_subject_has_permission.insertAsync(subject_permission);
             }
@@ -131,6 +151,26 @@ namespace es.dmoreno.utils.permissions
                 subject_permission.Permission = p.CopyTo(new DTOPermission());
             }
             return subject_permission;
+        }
+
+        public async Task<bool> AddSubjectToGroup(string remote_uuid, DTOGroup g)
+        {
+            var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
+            var subject_pertain_group = await db_subject_pertain_group.FirstIfExistsAsync<DTOSubjectPertainGroup>(new StatementOptions { 
+                Filters = new List<Filter> { 
+                    new Filter { Name = DTOSubjectPertainGroup.FilterRefGroup, ObjectValue = g.ID,  Type = FilterType.Equal },
+                    new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = remote_uuid,  Type = FilterType.Equal }
+                }
+            });
+            if (subject_pertain_group == null)
+            {
+                return await db_subject_pertain_group.insertAsync(new DTOSubjectPertainGroup { 
+                    RefGroup = g.ID,
+                    RemoteUUID = remote_uuid
+                });
+            }
+
+            return true;
         }
 
         protected virtual void Dispose(bool disposing)

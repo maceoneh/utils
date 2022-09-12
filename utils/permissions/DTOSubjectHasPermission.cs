@@ -12,7 +12,7 @@ namespace es.dmoreno.utils.permissions
         public const string TAG = "DTOSubjectHasPermission";
         internal const string FilterRefEntity = TAG + "RefEntity";
         internal const string FilterRefAction = TAG + "RefAction";
-        internal const string FilterRefSubject = TAG + "RefSubject";
+        internal const string FilterRemoteUUID = TAG + "RemoteUUID";
 
         public DTOPermission Permission { get; internal set; }
 
@@ -24,8 +24,8 @@ namespace es.dmoreno.utils.permissions
         [Field(FieldName = "ref_action", IsPrimaryKey = true, IsAutoincrement = false, Type = ParamType.Int32)]
         internal int RefAction { get; set; }
 
-        [Filter(Name = FilterRefSubject)]
-        [Field(FieldName = "ref_subject", IsPrimaryKey = true, IsAutoincrement = false, Type = ParamType.Int32)]
-        internal int RefSubject { get; set; }
+        [Filter(Name = FilterRemoteUUID)]
+        [Field(FieldName = "remote_uuid", IsPrimaryKey = true, IsAutoincrement = false, Type = ParamType.String)]
+        internal string RemoteUUID { get; set; }
     }
 }
