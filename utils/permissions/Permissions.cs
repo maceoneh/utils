@@ -3,6 +3,7 @@ using es.dmoreno.utils.dataaccess.filters;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -125,7 +126,7 @@ namespace es.dmoreno.utils.permissions
             return permision_in_db;
         }
 
-        public async Task<DTOSubjectHasPermission> AddSubjectToPermission(DTOPermission p, string remote_uuid)
+        public async Task<DTOSubjectHasPermission> AddSubjectToPermissionAsync(DTOPermission p, string remote_uuid)
         {
             var db_subject_has_permission = await this.DBLogic.ProxyStatement<DTOSubjectHasPermission>();
             var subject_permission = await db_subject_has_permission.FirstIfExistsAsync<DTOSubjectHasPermission>(new StatementOptions { 
@@ -153,7 +154,7 @@ namespace es.dmoreno.utils.permissions
             return subject_permission;
         }
 
-        public async Task<bool> AddSubjectToGroup(string remote_uuid, DTOGroup g)
+        public async Task<bool> AddSubjectToGroupAsync(string remote_uuid, DTOGroup g)
         {
             var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
             var subject_pertain_group = await db_subject_pertain_group.FirstIfExistsAsync<DTOSubjectPertainGroup>(new StatementOptions { 
@@ -171,6 +172,59 @@ namespace es.dmoreno.utils.permissions
             }
 
             return true;
+        }
+
+        public async Task<List<DTOPermission>> GetPermisssionsAsync(string uuid)
+        {
+            var permissions = new List<DTOPermission>();
+            //Se obtienen maestros
+            var db_actions = await this.DBLogic.ProxyStatement<DTOAction>();
+            var actions = await db_actions.selectAsync<DTOAction>();
+            var db_entities = await this.DBLogic.ProxyStatement<DTOEntity>();
+            var entities = await db_entities.selectAsync<DTOEntity>();
+            var db_permission = await this.DBLogic.ProxyStatement<DTOPermission>();
+            var permission = await db_permission.selectAsync<DTOPermission>();
+            var db_groups = await this.DBLogic.ProxyStatement<DTOGroup>();
+            var groups = await db_groups.selectAsync<DTOGroup>();
+            //Se obtienen los grupos a los que pertenece
+            var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
+            var subject_pertain_groups = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions { 
+                Filters = new List<Filter> { 
+                    new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = uuid, Type = FilterType.Equal }
+                }
+            });            
+            //Se obtiene el uuid de los grupos
+            var uuids = new List<string>();
+            foreach (var item in subject_pertain_groups)
+            {
+                uuids.Add(groups.Where(reg => reg.ID == item.RefGroup).FirstOrDefault().RemoteUUID);
+            }
+            uuids.Add(uuid);
+            //Se obtienen los permisos a los que pertenece
+            var db_permisions = await this.DBLogic.ProxyStatement<DTOSubjectHasPermission>();
+            var group_permissions = await db_permisions.selectAsync<DTOSubjectHasPermission>(new StatementOptions { 
+                Filters = new List<Filter> { 
+                    new Filter { Name = DTOSubjectHasPermission.FilterRemoteUUID, ObjectValue = uuids, Type = FilterType.In }
+                }
+            });
+            //Se agregan a la respuesta los permisos admitidos
+            foreach (var item in group_permissions)
+            {
+                if (permissions.Where(reg => reg.RefAction == item.RefAction && reg.RefEntity == item.RefEntity).Count() == 0)
+                {
+                    var p = new DTOPermission
+                    {
+                        RefAction = item.RefAction,
+                        RefEntity = item.RefEntity
+                    };
+                    p.Description = permission.Where(reg => reg.RefEntity == item.RefEntity && reg.RefAction == item.RefAction).FirstOrDefault().Description;
+                    p.Action = actions.Where(reg => reg.ID == item.RefAction).FirstOrDefault().CopyTo(new DTOAction());
+                    p.Entity = entities.Where(reg => reg.ID == item.RefEntity).FirstOrDefault().CopyTo(new DTOEntity());
+                    permissions.Add(p);
+                }
+            }
+
+            return permissions;
         }
 
         protected virtual void Dispose(bool disposing)

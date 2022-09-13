@@ -1008,6 +1008,11 @@ namespace es.dmoreno.utils.dataaccess.db
                                 var list = item.ObjectValue as List<int>;
                                 aux3 += Utils.buildInString(list.ToArray()) + ")";
                             }
+                            else if (dbfilter.FieldType == ParamType.String)
+                            {
+                                var list = item.ObjectValue as List<string>;
+                                aux3 += Utils.buildInString(list.ToArray(), true) + ")";
+                            }
                             else
                             {
                                 throw new Exception("Filter on '" + dbfilter.TableName + "." + dbfilter.FieldName + "' not support type " + item.Type + " value");

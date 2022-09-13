@@ -26,7 +26,7 @@ namespace es.dmoreno.utils.dataaccess.db
     {
         static private List<ClassDBProperties> PropertiesList { get; set; } = new List<ClassDBProperties>();
 
-        static public string buildInString(string[] array)
+        static public string buildInString(string[] array, bool add_quotes = false)
         {
             string result;
 
@@ -34,7 +34,15 @@ namespace es.dmoreno.utils.dataaccess.db
 
             for (int i = 0; i < array.Length; i++)
             {
+                if (add_quotes)
+                {
+                    result += "'";
+                }
                 result += array[i];
+                if (add_quotes)
+                {
+                    result += "'";
+                }
 
                 if (i < array.Length - 1)
                 {
