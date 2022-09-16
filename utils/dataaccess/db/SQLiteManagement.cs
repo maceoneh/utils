@@ -266,6 +266,78 @@ namespace es.dmoreno.utils.dataaccess.db
             throw new NotImplementedException();
         }
 
+        internal static string getCreateFieldSQLite(SQLStatement statement, FieldAttribute field_info, bool include_pk = false)
+        {
+            string result;
+
+            result = field_info.FieldName + " " + statement.getTypeSQLiteString(field_info.Type);
+
+            if (include_pk)
+            {
+                if (field_info.IsPrimaryKey)
+                {
+                    result += " PRIMARY KEY";
+                }
+            }
+
+            if (field_info.IsAutoincrement && field_info.isNumeric)
+            {
+                result += " AUTOINCREMENT";
+            }
+
+            if (!field_info.IsPrimaryKey || (field_info.IsPrimaryKey && !include_pk))
+            {
+                if (!field_info.AllowNull)
+                {
+                    result += " NOT NULL";
+                }
+            }
+
+            if (field_info.DefaultValue != null)
+            {
+                if (field_info.Type == ParamType.Boolean)
+                {
+                    if ((bool)field_info.DefaultValue)
+                    {
+                        result += " DEFAULT 1";
+                    }
+                    else
+                    {
+                        result += " DEFAULT 0";
+                    }
+                }
+                else if (field_info.Type == ParamType.Int16 || field_info.Type == ParamType.Int32 || field_info.Type == ParamType.Int64)
+                {
+                    result += " DEFAULT " + Convert.ToInt32(field_info.DefaultValue).ToString();
+                }
+                else if (field_info.Type == ParamType.DateTime)
+                {
+                    if ((string)field_info.DefaultValue == "0")
+                    {
+                        result += " DEFAULT " + DateTime.MinValue.Ticks.ToString();
+                    }
+                    else
+                    {
+                        result += " DEFAULT " + DateTime.Parse((string)field_info.DefaultValue).Ticks.ToString();
+                    }
+                }
+                else if (field_info.Type == ParamType.String)
+                {
+                    result += " DEFAULT '" + (string)field_info.DefaultValue + "'";
+                }
+                else if (field_info.Type == ParamType.Decimal)
+                {
+                    result += " DEFAULT " + Convert.ToDecimal(field_info.DefaultValue).ToString();
+                }
+                else
+                {
+                    throw new Exception("Datatype not supported");
+                }
+            }
+
+            return result;
+        }
+
         internal string getCreateFieldSQLite(FieldAttribute field_info, bool include_pk = false)
         {
             string result;
