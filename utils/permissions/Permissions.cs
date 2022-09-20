@@ -15,6 +15,12 @@ namespace es.dmoreno.utils.permissions
 {
     public class Permissions : IDisposable
     {
+        private class TableInfo
+        {
+            public string Name { get; set; }
+            public string FileName { get; set; }
+        }
+
         private bool disposedValue;
 
         private DataBaseLogic DBLogic { get; set; } = null;
@@ -34,7 +40,8 @@ namespace es.dmoreno.utils.permissions
             }
             this._Path = permissions_directory;
             var db_file = Path.Combine(permissions_directory, "permissions.db");
-            this.DBLogic = new DataBaseLogic(new ConnectionParameters {
+            this.DBLogic = new DataBaseLogic(new ConnectionParameters
+            {
                 Type = DBMSType.SQLite,
                 File = db_file
             });
@@ -48,13 +55,15 @@ namespace es.dmoreno.utils.permissions
             await this.DBLogic.Management.createAlterTableAsync<DTOSubjectHasPermission>();
             await this.DBLogic.Management.createAlterTableAsync<DTOGroup>();
             await this.DBLogic.Management.createAlterTableAsync<DTOSubjectPertainGroup>();
+            await this.DBLogic.Management.createAlterTableAsync<DTOTableWithPermission>();
         }
 
         public async Task<DTOEntity> AddEntityAsync(string name)
         {
             name = name.ToUpper().Trim();
             var db_entity = await this.DBLogic.ProxyStatement<DTOEntity>();
-            var entity_in_db = await db_entity.FirstIfExistsAsync<DTOEntity>(new StatementOptions {
+            var entity_in_db = await db_entity.FirstIfExistsAsync<DTOEntity>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name = DTOEntity.FilterName, ObjectValue = name, Type = FilterType.Equal }
                 }
@@ -107,7 +116,8 @@ namespace es.dmoreno.utils.permissions
         {
             description = description.ToUpper().Trim();
             var db_permisions = await this.DBLogic.ProxyStatement<DTOPermission>();
-            var permision_in_db = await db_permisions.FirstIfExistsAsync<DTOPermission>(new StatementOptions {
+            var permision_in_db = await db_permisions.FirstIfExistsAsync<DTOPermission>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name =  DTOPermission.FilterRefEntity, ObjectValue = e.ID, Type = FilterType.Equal },
                     new Filter { Name =  DTOPermission.FilterRefAction, ObjectValue = a.ID, Type = FilterType.Equal }
@@ -136,7 +146,8 @@ namespace es.dmoreno.utils.permissions
         public async Task<DTOSubjectHasPermission> AddSubjectToPermissionAsync(DTOPermission p, string remote_uuid)
         {
             var db_subject_has_permission = await this.DBLogic.ProxyStatement<DTOSubjectHasPermission>();
-            var subject_permission = await db_subject_has_permission.FirstIfExistsAsync<DTOSubjectHasPermission>(new StatementOptions {
+            var subject_permission = await db_subject_has_permission.FirstIfExistsAsync<DTOSubjectHasPermission>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name = DTOSubjectHasPermission.FilterRemoteUUID, ObjectValue = remote_uuid, Type = FilterType.Equal },
                     new Filter { Name = DTOSubjectHasPermission.FilterRefEntity, ObjectValue = p.RefEntity, Type = FilterType.Equal },
@@ -164,7 +175,8 @@ namespace es.dmoreno.utils.permissions
         public async Task<bool> AddSubjectToGroupAsync(string remote_uuid, DTOGroup g)
         {
             var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
-            var subject_pertain_group = await db_subject_pertain_group.FirstIfExistsAsync<DTOSubjectPertainGroup>(new StatementOptions {
+            var subject_pertain_group = await db_subject_pertain_group.FirstIfExistsAsync<DTOSubjectPertainGroup>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name = DTOSubjectPertainGroup.FilterRefGroup, ObjectValue = g.ID,  Type = FilterType.Equal },
                     new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = remote_uuid,  Type = FilterType.Equal }
@@ -172,7 +184,8 @@ namespace es.dmoreno.utils.permissions
             });
             if (subject_pertain_group == null)
             {
-                return await db_subject_pertain_group.insertAsync(new DTOSubjectPertainGroup {
+                return await db_subject_pertain_group.insertAsync(new DTOSubjectPertainGroup
+                {
                     RefGroup = g.ID,
                     RemoteUUID = remote_uuid
                 });
@@ -195,7 +208,8 @@ namespace es.dmoreno.utils.permissions
             var groups = await db_groups.selectAsync<DTOGroup>();
             //Se obtienen los grupos a los que pertenece
             var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
-            var subject_pertain_groups = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions {
+            var subject_pertain_groups = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = uuid, Type = FilterType.Equal }
                 }
@@ -209,7 +223,8 @@ namespace es.dmoreno.utils.permissions
             uuids.Add(uuid);
             //Se obtienen los permisos a los que pertenece
             var db_permisions = await this.DBLogic.ProxyStatement<DTOSubjectHasPermission>();
-            var group_permissions = await db_permisions.selectAsync<DTOSubjectHasPermission>(new StatementOptions {
+            var group_permissions = await db_permisions.selectAsync<DTOSubjectHasPermission>(new StatementOptions
+            {
                 Filters = new List<Filter> {
                     new Filter { Name = DTOSubjectHasPermission.FilterRemoteUUID, ObjectValue = uuids, Type = FilterType.In }
                 }
@@ -236,19 +251,42 @@ namespace es.dmoreno.utils.permissions
 
         public async Task<bool> CreateTablePermissions<T>() where T : class, new()
         {
+            TableInfo tableInfo = new TableInfo();
+            var create = false;
             if (this.DBLogic.Statement.Type == DBMSType.SQLite)
             {
-                return await this.SQLiteCreateTablePermissions<T>();
+                create = await this.SQLiteCreateTablePermissions<T>(tableInfo);
             }
             else
             {
                 throw new NotImplementedException("Only support SQLite engine");
             }
+
+            if (create)
+            {
+                var db_table_permisions = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
+                var table_permission = await db_table_permisions.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions { 
+                    Filters = new List<Filter> { 
+                        new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = tableInfo.Name, Type = FilterType.Equal }
+                    }
+                });
+                if (table_permission != null)
+                {
+                    table_permission.File = tableInfo.FileName;
+                    await db_table_permisions.updateAsync(table_permission);
+                }
+                else
+                {
+                    table_permission = new DTOTableWithPermission { File = tableInfo.FileName, Name = tableInfo.Name };
+                    await db_table_permisions.insertAsync(table_permission);
+                }
+            }
+            return create;
         }
 
-        private async Task<bool> SQLiteCreateTablePermissions<T>() where T : class, new()
+        private async Task<bool> SQLiteCreateTablePermissions<T>(TableInfo info) where T : class, new()
         {
-            var t = new T();            
+            var t = new T();
             //Se obtienen los datos de la tabla
             var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
             //Se crea una conexion a la base de datos con el sufijo _permissions
@@ -316,13 +354,22 @@ namespace es.dmoreno.utils.permissions
                     //Se agrega el campo de referencia al permiso
                     sql += ", ref_permission INTEGER)";
                     //Se lanza la consulta para crear la table
-                    return await db.Statement.executeNonQueryAsync(sql) > 0;
+                    await db.Statement.executeNonQueryAsync(sql);
+                    info.Name = table_name;
+                    info.FileName = table_name + ".db";
+                    return true;
                 }
                 else
                 {
                     return false;
                 }
             }
+        }
+
+        public async Task AddPermission<T>(T registry, DTORecordPermission p)
+        {
+            //Se extraen las PK del registro
+
         }
 
         protected virtual void Dispose(bool disposing)
@@ -356,3 +403,4 @@ namespace es.dmoreno.utils.permissions
         }
     }
 }
+

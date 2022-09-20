@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace es.dmoreno.utils.permissions
 {
     [Table(Name = "record_permissions", FilePerTable = true)]
-    internal class DTORecordPermission
+    public class DTORecordPermission
     {
         private string ValueGroupPermission = null;
 
@@ -32,7 +32,7 @@ namespace es.dmoreno.utils.permissions
                 try
                 {
                     //Si se deserializa sin problemas se asigna
-                    var o = JsonSerializer.Deserialize<DTOListGroupRecordPermission>(value);
+                    var o = JsonSerializer.Deserialize<DTOListUUIDRecordPermission>(value);
                     if (o != null)
                     {
                         this.ValueGroupPermission = value;
@@ -46,11 +46,11 @@ namespace es.dmoreno.utils.permissions
         [Field(FieldName = "all_can_read", Type = ParamType.Boolean)]
         public bool AllCanRead { get; set; }
 
-        public DTOListGroupRecordPermission GroupRecordPermissions 
+        public DTOUUIDRecordPermision[] UUIDRecordPermissions
         {
             get
             {
-                return JsonSerializer.Deserialize<DTOListGroupRecordPermission>(this.ValueGroupPermission);
+                return JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(this.ValueGroupPermission);
             }
             set
             {

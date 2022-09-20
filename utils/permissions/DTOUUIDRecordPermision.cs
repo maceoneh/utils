@@ -4,7 +4,7 @@ using System.Text;
 
 namespace es.dmoreno.utils.permissions
 {
-    internal class DTOGroupRecordPermision
+    public class DTOUUIDRecordPermision
     {
         public string UUID { get; set; }
         public bool CanWrite { get; set; }
