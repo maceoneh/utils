@@ -3,6 +3,7 @@ using es.dmoreno.utils.dataaccess.filters;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.IO;
 using System.Linq;
@@ -56,6 +57,7 @@ namespace es.dmoreno.utils.permissions
             await this.DBLogic.Management.createAlterTableAsync<DTOGroup>();
             await this.DBLogic.Management.createAlterTableAsync<DTOSubjectPertainGroup>();
             await this.DBLogic.Management.createAlterTableAsync<DTOTableWithPermission>();
+            await this.DBLogic.Management.createAlterTableAsync<DTORecordPermission>();
         }
 
         public async Task<DTOEntity> AddEntityAsync(string name)
@@ -366,10 +368,117 @@ namespace es.dmoreno.utils.permissions
             }
         }
 
-        public async Task AddPermission<T>(T registry, DTORecordPermission p)
+        private async Task<int> GetIDPermission(DTORecordPermission p)
         {
-            //Se extraen las PK del registro
+            return 0;   
+        }
 
+        public async Task AddPermission<T>(T registry, DTORecordPermission p) where T: class, new()
+        {           
+            //Se obtiene le nombre de la tabla para comprobar si tiene o no tabla de permisos
+            var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            var db_permission_table = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
+            var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions { 
+                Filters = new List<Filter> { 
+                    new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = table_att.Name + "_permissions" }
+                }
+            });
+            if (table_info != null)
+            {
+                using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_info.File) }))
+                {
+                    //Se busca el registro                    
+                    var pks = UtilsDB.getGetters<T>(true);
+                    var select = "SELECT ref_permission FROM " + table_info.Name;
+                    var where = " WHERE true ";
+                    for (int i = 0; i < pks.Count; i++)
+                    {
+                        var item = pks[i];
+                        where += " AND " + item.FieldAttributes.FieldName + " = @arg" + i.ToString();
+                        switch (item.FieldAttributes.Type)
+                        {
+                            case ParamType.Int16:                                
+                            case ParamType.Int32:
+                            case ParamType.Int64:
+                            case ParamType.String:
+                            case ParamType.LongString:
+                            case ParamType.Boolean:
+                            case ParamType.Decimal:
+                            case ParamType.DateTime:
+                                db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
+                               break;
+                            default:
+                                throw new Exception("Primary Key type is not supported");
+                        }
+                        //switch (item.FieldAttributes.Type)
+                        //{
+                        //    case ParamType.Int16:
+                        //        sql += ((Int16)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.Int32:
+                        //        sql += ((Int32)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.Int64:
+                        //        sql += ((Int64)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.String:
+                        //    case ParamType.LongString:
+                        //        sql += ((string)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.Boolean:
+                        //        sql += ((bool)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.Decimal:
+                        //        sql += ((decimal)item.GetterCustom(registry)).ToString();
+                        //        break;
+                        //    case ParamType.DateTime:
+                        //        var datetime = (DateTime)item.GetterCustom(registry);
+                        //        sql += datetime.Ticks.ToString();
+                        //        break;
+                        //    default:
+                        //        throw new Exception("Primary Key type is not supported");
+                        //}
+                    }
+                    var dbdata = await db.Statement.executeAsync(select + where);
+                    if (dbdata.next())
+                    {
+                        return;
+                    }
+
+                    //Se inserta si no exite
+                    var fields = "";
+                    
+                    for (int i = 0; i < pks.Count; i++)
+                    {
+                        var item = pks[i];
+                        fields += item.FieldAttributes.FieldName;
+                        if (i < pks.Count - 1)
+                        {
+                            fields += ",";
+                        }
+                    }
+                    select = "INSERT INTO " + table_info.Name + " (";
+                    fields = "";
+                    var values = "";
+                    //pks = UtilsDB.getGetters<T>(true);
+                    for (int i = 0; i < pks.Count; i++)
+                    {
+                        var item = pks[i];
+                        fields += item.FieldAttributes.FieldName;                        
+                        var arg = "@arg" + i.ToString();
+                        values += arg;                                    
+                        var value = item.GetterCustom(registry);
+                        db.Statement.addParameter(new StatementParameter(arg, item.FieldAttributes.Type, value));
+                        if (i < pks.Count - 1)
+                        {
+                            fields += ",";
+                            values += ",";
+                        }
+                    }
+                    select += fields + ") VALUES (" + values + ")";
+
+                }
+            }
         }
 
         protected virtual void Dispose(bool disposing)
