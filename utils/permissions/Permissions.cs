@@ -267,8 +267,9 @@ namespace es.dmoreno.utils.permissions
             if (create)
             {
                 var db_table_permisions = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
-                var table_permission = await db_table_permisions.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions { 
-                    Filters = new List<Filter> { 
+                var table_permission = await db_table_permisions.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions
+                {
+                    Filters = new List<Filter> {
                         new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = tableInfo.Name, Type = FilterType.Equal }
                     }
                 });
@@ -368,18 +369,41 @@ namespace es.dmoreno.utils.permissions
             }
         }
 
-        private async Task<int> GetIDPermission(DTORecordPermission p)
+        /// <summary>
+        /// Obtiene el ID del permiso que se indica
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        private async Task<int> GetIDPermissionAsync(DTORecordPermission p)
         {
-            return 0;   
+            var db_record_permisions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
+            var list = await db_record_permisions.selectAsync<DTORecordPermission>();
+            var permission = list.Where(reg => reg.Equals(p)).FirstOrDefault();
+            if (permission == null)
+            {
+                return int.MinValue;
+            }
+            else
+            {
+                return permission.ID;
+            }
         }
 
-        public async Task AddPermission<T>(T registry, DTORecordPermission p) where T: class, new()
-        {           
+        public async Task AddPermissionAsync<T>(T registry, DTORecordPermission p) where T : class, new()
+        {
+            //Se obtiene el permiso, si no existe se crea
+            p.ID = await this.GetIDPermissionAsync(p);
+            if (p.ID == int.MinValue)
+            {
+                var db_record_permissions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
+                await db_record_permissions.insertAsync(p);
+            }
             //Se obtiene le nombre de la tabla para comprobar si tiene o no tabla de permisos
             var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
             var db_permission_table = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
-            var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions { 
-                Filters = new List<Filter> { 
+            var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions
+            {
+                Filters = new List<Filter> {
                     new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = table_att.Name + "_permissions" }
                 }
             });
@@ -389,7 +413,7 @@ namespace es.dmoreno.utils.permissions
                 {
                     //Se busca el registro                    
                     var pks = UtilsDB.getGetters<T>(true);
-                    var select = "SELECT ref_permission FROM " + table_info.Name;
+                    var sql = "SELECT ref_permission FROM " + table_info.Name;
                     var where = " WHERE true ";
                     for (int i = 0; i < pks.Count; i++)
                     {
@@ -397,7 +421,7 @@ namespace es.dmoreno.utils.permissions
                         where += " AND " + item.FieldAttributes.FieldName + " = @arg" + i.ToString();
                         switch (item.FieldAttributes.Type)
                         {
-                            case ParamType.Int16:                                
+                            case ParamType.Int16:
                             case ParamType.Int32:
                             case ParamType.Int64:
                             case ParamType.String:
@@ -406,67 +430,73 @@ namespace es.dmoreno.utils.permissions
                             case ParamType.Decimal:
                             case ParamType.DateTime:
                                 db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
-                               break;
+                                break;
                             default:
                                 throw new Exception("Primary Key type is not supported");
                         }
-                        //switch (item.FieldAttributes.Type)
-                        //{
-                        //    case ParamType.Int16:
-                        //        sql += ((Int16)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.Int32:
-                        //        sql += ((Int32)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.Int64:
-                        //        sql += ((Int64)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.String:
-                        //    case ParamType.LongString:
-                        //        sql += ((string)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.Boolean:
-                        //        sql += ((bool)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.Decimal:
-                        //        sql += ((decimal)item.GetterCustom(registry)).ToString();
-                        //        break;
-                        //    case ParamType.DateTime:
-                        //        var datetime = (DateTime)item.GetterCustom(registry);
-                        //        sql += datetime.Ticks.ToString();
-                        //        break;
-                        //    default:
-                        //        throw new Exception("Primary Key type is not supported");
-                        //}
                     }
-                    var dbdata = await db.Statement.executeAsync(select + where);
-                    if (dbdata.next())
+                    var dbdata = await db.Statement.executeAsync(sql + where);
+                    if (dbdata.next()) //El registro tiene un permiso asignado
                     {
-                        return;
+                        //Se ejecuta un Update sobre el permiso del registro
+                        sql = "UPDATE " + table_info.Name + " SET ";
+                    }
+                    else
+                    {
+                        //Se ejecuta un Insert
+                        sql = "INSERT INTO " + table_info.Name + " (";
+                        var fields = "";
+                        var args = "";
+                        for (int i = 0; i < pks.Count; i++)
+                        {
+                            var item = pks[i];
+                            fields += item.FieldAttributes.FieldName;
+                            args += "@arg" + i.ToString();
+                            switch (item.FieldAttributes.Type)
+                            {
+                                case ParamType.Int16:
+                                case ParamType.Int32:
+                                case ParamType.Int64:
+                                case ParamType.String:
+                                case ParamType.LongString:
+                                case ParamType.Boolean:
+                                case ParamType.Decimal:
+                                case ParamType.DateTime:
+                                    db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
+                                    break;
+                                default:
+                                    throw new Exception("Primary Key type is not supported");
+                            }
+                            if (i < pks.Count - 1)
+                            {
+                                fields += ",";
+                                args += ",";
+                            }
+                        }
+                        db.Statement.addParameter(new StatementParameter("@arg" + (pks.Count + 1).ToString(), ParamType.Int32, p.ID));
+                        sql += fields + ", ref_permission) VALUES (" + args + ", arg" + (pks.Count + 1).ToString() + ")";
+
                     }
 
+
+
+
+
+
+
+
                     //Se inserta si no exite
-                    var fields = "";
-                    
-                    for (int i = 0; i < pks.Count; i++)
-                    {
-                        var item = pks[i];
-                        fields += item.FieldAttributes.FieldName;
-                        if (i < pks.Count - 1)
-                        {
-                            fields += ",";
-                        }
-                    }
-                    select = "INSERT INTO " + table_info.Name + " (";
+
+                    sql = "INSERT INTO " + table_info.Name + " (";
                     fields = "";
                     var values = "";
                     //pks = UtilsDB.getGetters<T>(true);
                     for (int i = 0; i < pks.Count; i++)
                     {
                         var item = pks[i];
-                        fields += item.FieldAttributes.FieldName;                        
+                        fields += item.FieldAttributes.FieldName;
                         var arg = "@arg" + i.ToString();
-                        values += arg;                                    
+                        values += arg;
                         var value = item.GetterCustom(registry);
                         db.Statement.addParameter(new StatementParameter(arg, item.FieldAttributes.Type, value));
                         if (i < pks.Count - 1)
@@ -475,7 +505,7 @@ namespace es.dmoreno.utils.permissions
                             values += ",";
                         }
                     }
-                    select += fields + ") VALUES (" + values + ")";
+                    sql += fields + ") VALUES (" + values + ")";
 
                 }
             }
