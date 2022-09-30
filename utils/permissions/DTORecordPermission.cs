@@ -9,13 +9,14 @@ namespace es.dmoreno.utils.permissions
     [Table(Name = "record_permissions", FilePerTable = true)]
     public class DTORecordPermission
     {
-        private string ValueUUIDPermission = null;
+        //private string ValueUUIDPermission = null;
+        private DTOUUIDRecordPermision[] ValueUUIDPermission = null;
 
         [Field(FieldName = "id", IsAutoincrement = true, IsPrimaryKey = true, Type = ParamType.Int32)]
-        public int ID { get; set; }
+        internal int ID { get; set; }
 
         [Field(FieldName = "entity", Type = ParamType.String)]
-        public string Entity { get; set; }
+        internal string Entity { get; set; }
 
         [Field(FieldName = "owner", Type = ParamType.String)]
         public string UUIDOwner { get; set; }
@@ -25,19 +26,29 @@ namespace es.dmoreno.utils.permissions
         {
             get
             {
-                return this.ValueUUIDPermission;
+                return JsonSerializer.Serialize<DTOUUIDRecordPermision[]>(this.ValueUUIDPermission);
+                //return this.ValueUUIDPermission;
             }
             set
             {
-                try
+                if (value == null)
                 {
-                    var o = JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(value);
-                    if (o != null)
-                    {
-                        this.ValueUUIDPermission = value;
-                    }
+                    this.ValueUUIDPermission = null;
                 }
-                catch { }
+                else
+                {
+                    this.ValueUUIDPermission = JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(value);
+                }
+                //try
+                //{
+
+                //var o = JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(value);
+                //if (o != null)
+                //{
+                //    this.ValueUUIDPermission = o;
+                //}
+                //}
+                //catch { }
             }
         }
 
@@ -45,11 +56,13 @@ namespace es.dmoreno.utils.permissions
         {
             get
             {
-                return JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(this.ValueUUIDPermission);
+                return this.ValueUUIDPermission;
+                //return JsonSerializer.Deserialize<DTOUUIDRecordPermision[]?>(this.ValueUUIDPermission);
             }
             set
             {
-                this.ValueUUIDPermission = JsonSerializer.Serialize(value);
+                this.ValueUUIDPermission = value;
+                //this.ValueUUIDPermission = JsonSerializer.Serialize(value);
             }
         }
 
@@ -64,20 +77,40 @@ namespace es.dmoreno.utils.permissions
             {
                 return false;
             }
-            if (this.UUIDRecordPermissions.Length != o.UUIDRecordPermissions.Length)
+            var error = this.Entity != o.Entity ||
+                        this.UUIDOwner != o.UUIDOwner;
+            if (error)
             {
                 return false;
             }
-            for (int i = 0; i < this.UUIDRecordPermissions.Length; i++)
-            { 
-                var item_local = this.UUIDRecordPermissions[i];
-                var item_remote = o.UUIDRecordPermissions[i];
-                if (!item_local.Equals(item_remote))
+            if (this.UUIDRecordPermissions == null && o.UUIDRecordPermissions == null)
+            {
+                return true;
+            }
+            else
+            {
+                if (this.UUIDRecordPermissions != null && o.UUIDRecordPermissions != null)
+                {
+                    if (this.UUIDRecordPermissions.Length != o.UUIDRecordPermissions.Length)
+                    {
+                        return false;
+                    }
+                    for (int i = 0; i < this.UUIDRecordPermissions.Length; i++)
+                    {
+                        var item_local = this.UUIDRecordPermissions[i];
+                        var item_remote = o.UUIDRecordPermissions[i];
+                        if (!item_local.Equals(item_remote))
+                        {
+                            return false;
+                        }
+                    }
+                    return true;
+                }
+                else
                 {
                     return false;
                 }
             }
-            return true;
         }
     }
 }

@@ -391,15 +391,9 @@ namespace es.dmoreno.utils.permissions
 
         public async Task AddPermissionAsync<T>(T registry, DTORecordPermission p) where T : class, new()
         {
-            //Se obtiene el permiso, si no existe se crea
-            p.ID = await this.GetIDPermissionAsync(p);
-            if (p.ID == int.MinValue)
-            {
-                var db_record_permissions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
-                await db_record_permissions.insertAsync(p);
-            }
             //Se obtiene le nombre de la tabla para comprobar si tiene o no tabla de permisos
             var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            //Se comprueba si la entidad tiene que trabajar con permisos
             var db_permission_table = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
             var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions
             {
@@ -409,6 +403,15 @@ namespace es.dmoreno.utils.permissions
             });
             if (table_info != null)
             {
+                //Se obtiene el permiso, si no existe se crea
+                p.Entity = table_att.Name;
+                p.ID = await this.GetIDPermissionAsync(p);
+                if (p.ID == int.MinValue)
+                {
+                    var db_record_permissions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
+                    await db_record_permissions.insertAsync(p);
+                }
+                //Se comprueba si el registro tiene ya asociado un permiso
                 using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_info.File) }))
                 {
                     //Se busca el registro                    
@@ -435,11 +438,21 @@ namespace es.dmoreno.utils.permissions
                                 throw new Exception("Primary Key type is not supported");
                         }
                     }
+                    //Si el registro se encuentra se actualiza, si no, se insertará
                     var dbdata = await db.Statement.executeAsync(sql + where);
                     if (dbdata.next()) //El registro tiene un permiso asignado
                     {
                         //Se ejecuta un Update sobre el permiso del registro
                         sql = "UPDATE " + table_info.Name + " SET ";
+                        where = " WHERE true ";
+                        for (int i = 0; i < pks.Count; i++)
+                        {
+                            var item = pks[i];
+                            where += " AND " + item.FieldAttributes.FieldName + " = @arg" + i.ToString();
+                            db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
+                        }
+                        sql += "ref_permission = @arg" + pks.Count.ToString() + where;
+                        db.Statement.addParameter(new StatementParameter("@arg" + pks.Count.ToString(), ParamType.Int32, p.ID));
                     }
                     else
                     {
@@ -452,61 +465,18 @@ namespace es.dmoreno.utils.permissions
                             var item = pks[i];
                             fields += item.FieldAttributes.FieldName;
                             args += "@arg" + i.ToString();
-                            switch (item.FieldAttributes.Type)
-                            {
-                                case ParamType.Int16:
-                                case ParamType.Int32:
-                                case ParamType.Int64:
-                                case ParamType.String:
-                                case ParamType.LongString:
-                                case ParamType.Boolean:
-                                case ParamType.Decimal:
-                                case ParamType.DateTime:
-                                    db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
-                                    break;
-                                default:
-                                    throw new Exception("Primary Key type is not supported");
-                            }
+                            db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
                             if (i < pks.Count - 1)
                             {
                                 fields += ",";
                                 args += ",";
                             }
                         }
-                        db.Statement.addParameter(new StatementParameter("@arg" + (pks.Count + 1).ToString(), ParamType.Int32, p.ID));
-                        sql += fields + ", ref_permission) VALUES (" + args + ", arg" + (pks.Count + 1).ToString() + ")";
-
+                        db.Statement.addParameter(new StatementParameter("@arg" + pks.Count.ToString(), ParamType.Int32, p.ID));
+                        sql += fields + ", ref_permission) VALUES (" + args + ", @arg" + pks.Count.ToString() + ")";
                     }
-
-
-
-
-
-
-
-
-                    //Se inserta si no exite
-
-                    sql = "INSERT INTO " + table_info.Name + " (";
-                    fields = "";
-                    var values = "";
-                    //pks = UtilsDB.getGetters<T>(true);
-                    for (int i = 0; i < pks.Count; i++)
-                    {
-                        var item = pks[i];
-                        fields += item.FieldAttributes.FieldName;
-                        var arg = "@arg" + i.ToString();
-                        values += arg;
-                        var value = item.GetterCustom(registry);
-                        db.Statement.addParameter(new StatementParameter(arg, item.FieldAttributes.Type, value));
-                        if (i < pks.Count - 1)
-                        {
-                            fields += ",";
-                            values += ",";
-                        }
-                    }
-                    sql += fields + ") VALUES (" + values + ")";
-
+                    //Se actualiza la base de datos
+                    await db.Statement.executeNonQueryAsync(sql);
                 }
             }
         }
