@@ -3,6 +3,8 @@ using es.dmoreno.utils.dataaccess.filters;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.IO;
@@ -479,6 +481,68 @@ namespace es.dmoreno.utils.permissions
                     await db.Statement.executeNonQueryAsync(sql);
                 }
             }
+        }
+
+        /// <summary>
+        /// Elimina los registros de una lista de los que el usuario indicado no tiene permisos de visualizacion
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="list">Lista a filtrar</param>
+        /// <param name="UUID">UUID del usuario o grupo que hace la consulta</param>
+        /// <param name="limit">Establece cada cuantos registros comprueba en la base de datos</param>
+        /// <returns></returns>
+        public async Task<List<T>> FilterByPermission<T>(List<T> list, string UUID, int limit = 100)
+        {            
+            //Si la lista viene vacia no se hace nada
+            if (list == null)
+            {
+                return list;
+            }
+            if (list.Count == 0)
+            {
+                return list;
+            }
+            //Se obtienen detalles del tipo de datos del listado
+            var first_reg = list[0];
+            var table_att = first_reg.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            //Se obtienen los permisos relacionados con el UUID
+            var db_record_permisions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
+            var list_permissions = (await db_record_permisions.selectAsync<DTORecordPermission>()).Where(reg => reg.Entity == table_att.Name).ToList();
+            if (list_permissions.Count == 0) //Si no existen permisos establecidos se devuelve toda la lista
+            {
+                return list;
+            }
+            //Se obtienen los permisos que lo tienen como owner
+            var owners = list_permissions.Where(reg => reg.Entity == UUID).ToList();
+            //Se obtienen los permisos que lo referencian con permiso de lectura
+            var can_read_permission = list_permissions.Where(reg => reg.UUIDRecordPermissions.Where(record => record.UUID == UUID && record.CanRead == true).Count() > 0).ToList();
+            //Se obtienen los permisos de los grupos a los que pertenece            
+            var db_groups = await this.DBLogic.ProxyStatement<DTOGroup>();
+            var list_groups = await db_groups.selectAsync<DTOGroup>();
+            var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
+            var list_subject_pertain_group = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions { 
+                Filters = new List<Filter>() { 
+                    new Filter { Name = DTOSubjectPertainGroup.FilterRefGroup, ObjectValue = UUID, Type = FilterType.Equal }
+                }
+            });
+            var groups = new List<string>();
+            foreach (var item in list_subject_pertain_group)
+            {
+                groups.Add(list_groups.Where(reg => reg.ID == item.RefGroup).FirstOrDefault().RemoteUUID);
+            }
+            var groups_can_read_permission = list_permissions.Where(reg => reg.UUIDRecordPermissions.Where(record => groups.Contains(record.UUID) && record.CanRead == true).Count() > 0).ToList();
+            //Se buscan los registros en la tabla de permisos
+            int pos = 0;
+            var count = 0;
+            while (pos < list.Count)
+            {
+                if (count == limit)
+                {
+                    count = 0;
+                }
+            }
+
+            return null;
         }
 
         protected virtual void Dispose(bool disposing)
