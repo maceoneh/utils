@@ -1,4 +1,5 @@
 ﻿using es.dmoreno.utils.dataaccess.db;
+using es.dmoreno.utils.dataaccess.filters;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -14,6 +15,7 @@ namespace es.dmoreno.utils.permissions
         [Field(FieldName = "id", IsPrimaryKey = true, IsAutoincrement = true, Type = ParamType.Int32)]
         public int ID { get; set; }
 
+        [Filter(Name = FilterName)]
         [Field(FieldName = "name", Type = ParamType.String, AllowNull = false)]
         public string Name { get; set; }
 
