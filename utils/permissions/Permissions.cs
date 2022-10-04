@@ -255,11 +255,23 @@ namespace es.dmoreno.utils.permissions
 
         public async Task<bool> CreateTablePermissions<T>() where T : class, new()
         {
+            var t = new T();
+            if (!(t is IDataPermission))
+            {
+                throw new Exception(t.GetType().Name + " must follow the IDataPermission interface");
+            }
             TableInfo tableInfo = new TableInfo();
+            var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            tableInfo.FileName = "data_permission_" + table_att.Name + ".db";
+            tableInfo.Name = table_att.Name;
             var create = false;
             if (this.DBLogic.Statement.Type == DBMSType.SQLite)
             {
-                create = await this.SQLiteCreateTablePermissions<T>(tableInfo);
+                //create = await this.SQLiteCreateTablePermissions<T>(tableInfo);
+                using (var aux_db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, tableInfo.FileName) }))
+                {
+                    create = await aux_db.Management.createAlterTableAsync<DTODataPermission>();
+                }
             }
             else
             {
@@ -289,87 +301,88 @@ namespace es.dmoreno.utils.permissions
             return create;
         }
 
-        private async Task<bool> SQLiteCreateTablePermissions<T>(TableInfo info) where T : class, new()
-        {
-            var t = new T();
-            //Se obtienen los datos de la tabla
-            var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
-            //Se crea una conexion a la base de datos con el sufijo _permissions
-            var table_file = table_att.Name + "_permissions";
-            var db_path = Path.Combine(this._Path, table_file + ".db");
-            using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = db_path }))
-            {
-                var table_exists = false;
-                //Se comprueba si existe la tabla
-                var sql = "SELECT * FROM " + table_att.Name + " LIMIT 1";
-                try
-                {
-                    await db.Statement.executeAsync(sql);
-                    table_exists = true;
-                }
-                catch (SqliteException ex)
-                {
-                    //Microsoft.Data.Sqlite.SqliteException: 'SQLite Error 1: 'no such table: messages_permissions'.'
-                    if (ex.SqliteErrorCode == 1)
-                    {
-                        if (!ex.Message.StartsWith("SQLite Error 1: 'no such table: "))
-                        {
-                            throw;
-                        }
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                //Si la tabla no existe se crea con los campos de clave primaria y referencia al permiso
-                if (!table_exists)
-                {
-                    sql = "CREATE TABLE " + table_att.Name + " (";
-                    //Se obtienen las PK de la clase
-                    var pks = UtilsDB.getFieldAttributes(UtilsDB.getPropertyInfos<T>(t, true)).Where(a => a.IsPrimaryKey).ToList();
-                    //Se desactiva el autoincrement
-                    foreach (var item in pks)
-                    {
-                        item.IsAutoincrement = false;
-                    }
-                    if (pks.Count == 1)
-                    {
-                        sql += " " + SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[0], true);
-                    }
-                    else
-                    {
-                        for (int i = 0; i < pks.Count; i++)
-                        {
-                            sql += SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[i], false) + ", ";
-                        }
+        //private async Task<bool> SQLiteCreateTablePermissions<T>(TableInfo info) where T : class, new()
+        //{
 
-                        sql += " PRIMARY KEY (";
-                        for (int i = 0; i < pks.Count; i++)
-                        {
-                            sql += pks[i].FieldName;
+            //var t = new T();
+            ////Se obtienen los datos de la tabla
+            //var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            ////Se crea una conexion a la base de datos con el sufijo _permissions
+            //var table_file = table_att.Name + "_permissions";
+            //var db_path = Path.Combine(this._Path, table_file + ".db");
+            //using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = db_path }))
+            //{
+            //    var table_exists = false;
+            //    //Se comprueba si existe la tabla
+            //    var sql = "SELECT * FROM " + table_att.Name + " LIMIT 1";
+            //    try
+            //    {
+            //        await db.Statement.executeAsync(sql);
+            //        table_exists = true;
+            //    }
+            //    catch (SqliteException ex)
+            //    {
+            //        //Microsoft.Data.Sqlite.SqliteException: 'SQLite Error 1: 'no such table: messages_permissions'.'
+            //        if (ex.SqliteErrorCode == 1)
+            //        {
+            //            if (!ex.Message.StartsWith("SQLite Error 1: 'no such table: "))
+            //            {
+            //                throw;
+            //            }
+            //        }
+            //        else
+            //        {
+            //            throw;
+            //        }
+            //    }
+            //    //Si la tabla no existe se crea con los campos de clave primaria y referencia al permiso
+            //    if (!table_exists)
+            //    {
+            //        sql = "CREATE TABLE " + table_att.Name + " (";
+            //        //Se obtienen las PK de la clase
+            //        var pks = UtilsDB.getFieldAttributes(UtilsDB.getPropertyInfos<T>(t, true)).Where(a => a.IsPrimaryKey).ToList();
+            //        //Se desactiva el autoincrement
+            //        foreach (var item in pks)
+            //        {
+            //            item.IsAutoincrement = false;
+            //        }
+            //        if (pks.Count == 1)
+            //        {
+            //            sql += " " + SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[0], true);
+            //        }
+            //        else
+            //        {
+            //            for (int i = 0; i < pks.Count; i++)
+            //            {
+            //                sql += SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[i], false) + ", ";
+            //            }
 
-                            if (i < pks.Count - 1)
-                            {
-                                sql += ", ";
-                            }
-                        }
-                        sql += ")";
-                    }
-                    //Se agrega el campo de referencia al permiso
-                    sql += ", ref_permission INTEGER)";
-                    //Se lanza la consulta para crear la table
-                    await db.Statement.executeNonQueryAsync(sql);
-                    info.Name = table_att.Name;
-                    info.FileName = table_file + ".db";
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
+            //            sql += " PRIMARY KEY (";
+            //            for (int i = 0; i < pks.Count; i++)
+            //            {
+            //                sql += pks[i].FieldName;
+
+            //                if (i < pks.Count - 1)
+            //                {
+            //                    sql += ", ";
+            //                }
+            //            }
+            //            sql += ")";
+            //        }
+            //        //Se agrega el campo de referencia al permiso
+            //        sql += ", ref_permission INTEGER)";
+            //        //Se lanza la consulta para crear la table
+            //        await db.Statement.executeNonQueryAsync(sql);
+            //        info.Name = table_att.Name;
+            //        info.FileName = table_file + ".db";
+            //        return true;
+            //    }
+            //    else
+            //    {
+            //        return false;
+            //    }
+            //}
+        //}
 
         /// <summary>
         /// Obtiene el ID del permiso que se indica
@@ -391,18 +404,19 @@ namespace es.dmoreno.utils.permissions
             }
         }
 
+
+
         public async Task AddPermissionAsync<T>(T registry, DTORecordPermission p) where T : class, new()
         {
+            if (!(registry is IDataPermission))
+            {
+                throw new Exception(registry.GetType().Name + " must follow the IDataPermission interface");
+            }
             //Se obtiene le nombre de la tabla para comprobar si tiene o no tabla de permisos
             var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
             //Se comprueba si la entidad tiene que trabajar con permisos
             var db_permission_table = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
-            var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions
-            {
-                Filters = new List<Filter> {
-                    new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = table_att.Name/* + "_permissions"*/ }
-                }
-            });
+            var table_info = await this.GetFilenameFromTablePermission(table_att.Name);
             if (table_info != null)
             {
                 //Se obtiene el permiso, si no existe se crea
@@ -416,70 +430,64 @@ namespace es.dmoreno.utils.permissions
                 //Se comprueba si el registro tiene ya asociado un permiso
                 using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_info.File) }))
                 {
-                    //Se busca el registro                    
-                    var pks = UtilsDB.getGetters<T>(true);
-                    var sql = "SELECT ref_permission FROM " + table_info.Name;
-                    var where = " WHERE true ";
-                    for (int i = 0; i < pks.Count; i++)
-                    {
-                        var item = pks[i];
-                        where += " AND " + item.FieldAttributes.FieldName + " = @arg" + i.ToString();
-                        switch (item.FieldAttributes.Type)
-                        {
-                            case ParamType.Int16:
-                            case ParamType.Int32:
-                            case ParamType.Int64:
-                            case ParamType.String:
-                            case ParamType.LongString:
-                            case ParamType.Boolean:
-                            case ParamType.Decimal:
-                            case ParamType.DateTime:
-                                db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
-                                break;
-                            default:
-                                throw new Exception("Primary Key type is not supported");
+                    var id_record = (registry as IDataPermission).IDRecord;
+                    var data_permission = await db.Statement.FirstIfExistsAsync<DTODataPermission>(new StatementOptions { 
+                        Filters = new List<Filter> { 
+                            new Filter { Name = DTODataPermission.FilterIdentityRecord, ObjectValue = id_record, Type = FilterType.Equal }
                         }
-                    }
-                    //Si el registro se encuentra se actualiza, si no, se insertará
-                    var dbdata = await db.Statement.executeAsync(sql + where);
-                    if (dbdata.next()) //El registro tiene un permiso asignado
+                    });
+                    if (data_permission == null)
                     {
-                        //Se ejecuta un Update sobre el permiso del registro
-                        sql = "UPDATE " + table_info.Name + " SET ";
-                        where = " WHERE true ";
-                        for (int i = 0; i < pks.Count; i++)
+                        await db.Statement.insertAsync(new DTODataPermission
                         {
-                            var item = pks[i];
-                            where += " AND " + item.FieldAttributes.FieldName + " = @arg" + i.ToString();
-                            db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
-                        }
-                        sql += "ref_permission = @arg" + pks.Count.ToString() + where;
-                        db.Statement.addParameter(new StatementParameter("@arg" + pks.Count.ToString(), ParamType.Int32, p.ID));
+                            RefPermission = p.ID,
+                            IdentityRecord = id_record
+                        });
                     }
                     else
                     {
-                        //Se ejecuta un Insert
-                        sql = "INSERT INTO " + table_info.Name + " (";
-                        var fields = "";
-                        var args = "";
-                        for (int i = 0; i < pks.Count; i++)
-                        {
-                            var item = pks[i];
-                            fields += item.FieldAttributes.FieldName;
-                            args += "@arg" + i.ToString();
-                            db.Statement.addParameter(new StatementParameter("@arg" + i.ToString(), item.FieldAttributes.Type, item.GetterCustom(registry)));
-                            if (i < pks.Count - 1)
-                            {
-                                fields += ",";
-                                args += ",";
-                            }
-                        }
-                        db.Statement.addParameter(new StatementParameter("@arg" + pks.Count.ToString(), ParamType.Int32, p.ID));
-                        sql += fields + ", ref_permission) VALUES (" + args + ", @arg" + pks.Count.ToString() + ")";
+                        data_permission.RefPermission = p.ID;
+                        await db.Statement.updateAsync(data_permission);
                     }
-                    //Se actualiza la base de datos
-                    await db.Statement.executeNonQueryAsync(sql);
                 }
+            }
+        }
+
+        //internal class PermissionsGroup<T>
+        //{
+        //    public int RefPermission { get; set; }
+        //    public List<T> List { get; set; }
+        //};
+
+        //private async Task<List<PermissionsGroup<T>>> GetPermissionsTable<T>() where T : class, new()
+        //{
+        //    var t = new T();
+        //    var pks = UtilsDB.getGetters<T>(true);
+
+        //    return null;
+        //}
+
+        /// <summary>
+        /// Devuelve el nombre del fichero donde se guardan los permisos de los registros de una entidad
+        /// </summary>
+        /// <param name="tablename"></param>
+        /// <returns></returns>
+        private async Task<DTOTableWithPermission> GetFilenameFromTablePermission(string tablename)
+        {
+            var db_permission_table = await this.DBLogic.ProxyStatement<DTOTableWithPermission>();
+            var table_info = await db_permission_table.FirstIfExistsAsync<DTOTableWithPermission>(new StatementOptions
+            {
+                Filters = new List<Filter> {
+                    new Filter { Name = DTOTableWithPermission.FilterName, ObjectValue = tablename }
+                }
+            });
+            if (table_info == null)
+            {
+                return null;
+            }
+            else
+            {
+                return table_info;
             }
         }
 
@@ -491,8 +499,8 @@ namespace es.dmoreno.utils.permissions
         /// <param name="UUID">UUID del usuario o grupo que hace la consulta</param>
         /// <param name="limit">Establece cada cuantos registros comprueba en la base de datos</param>
         /// <returns></returns>
-        public async Task<List<T>> FilterByPermission<T>(List<T> list, string UUID, int limit = 100)
-        {            
+        public async Task<List<T>> FilterByPermission<T>(List<T> list, string UUID, int limit = 100) where T : class, new()
+        {
             //Si la lista viene vacia no se hace nada
             if (list == null)
             {
@@ -505,6 +513,12 @@ namespace es.dmoreno.utils.permissions
             //Se obtienen detalles del tipo de datos del listado
             var first_reg = list[0];
             var table_att = first_reg.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            //Se comprueba si existe tabla con permisos,si no existe se devuelve toda la lista
+            var table_record_permissions = await this.GetFilenameFromTablePermission(table_att.Name);
+            if (table_record_permissions == null)
+            {
+                return list;
+            }
             //Se obtienen los permisos relacionados con el UUID
             var db_record_permisions = await this.DBLogic.ProxyStatement<DTORecordPermission>();
             var list_permissions = (await db_record_permisions.selectAsync<DTORecordPermission>()).Where(reg => reg.Entity == table_att.Name).ToList();
@@ -520,8 +534,9 @@ namespace es.dmoreno.utils.permissions
             var db_groups = await this.DBLogic.ProxyStatement<DTOGroup>();
             var list_groups = await db_groups.selectAsync<DTOGroup>();
             var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
-            var list_subject_pertain_group = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions { 
-                Filters = new List<Filter>() { 
+            var list_subject_pertain_group = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions
+            {
+                Filters = new List<Filter>() {
                     new Filter { Name = DTOSubjectPertainGroup.FilterRefGroup, ObjectValue = UUID, Type = FilterType.Equal }
                 }
             });
@@ -531,11 +546,76 @@ namespace es.dmoreno.utils.permissions
                 groups.Add(list_groups.Where(reg => reg.ID == item.RefGroup).FirstOrDefault().RemoteUUID);
             }
             var groups_can_read_permission = list_permissions.Where(reg => reg.UUIDRecordPermissions.Where(record => groups.Contains(record.UUID) && record.CanRead == true).Count() > 0).ToList();
-            //Se buscan los registros en la tabla de permisos
+            //Se unifican todas las referencias a los permisos que se pueden usar
+            var ref_permissions = new List<int>();
+            foreach (var item in owners)
+            {
+                ref_permissions.Add(item.ID);
+            }
+            foreach (var item in groups_can_read_permission)
+            {
+                ref_permissions.Add(item.ID);
+            }
+            //Se buscan los registros en la tabla de permisos a los que el usuario tiene permisos
+            var sql = "SELECT ";
+            var pks = UtilsDB.getGetters<T>(true);
+            for (int i = 0; i < pks.Count; i++)
+            {
+                var item = pks[i];
+                sql += item.FieldAttributes.FieldName;
+                if (i < pks.Count - 2)
+                {
+                    sql += ",";
+                }
+            }
+            sql += " FROM " + table_att.Name + " WHERE ref_permission IN (";
+            for (int i = 0; i < ref_permissions.Count; i++)
+            {
+                var item = ref_permissions[i];
+                sql += item.ToString();
+                if (i < ref_permissions.Count - 2)
+                {
+                    sql += ",";
+                }
+            }
+            sql += ") ORDER BY";
+            for (int i = 0; i < pks.Count; i++)
+            {
+                var item = pks[i];
+                sql += " " + item.FieldAttributes.FieldName + " ASC";
+                if (i < pks.Count - 2)
+                {
+                    sql += ",";
+                }
+            }
+            
+            using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_record_permissions.File) }))
+            {
+                var dataset = await db.Statement.executeAsync(sql);
+                if (dataset.next())
+                {
+                    do
+                    {
+
+                    }
+                    while (dataset.next());
+                }
+            }
+
+
+
+
+
+
+
+
             int pos = 0;
             var count = 0;
+            //Se obtienen las primary keys y los metodos para leer los campos
+
             while (pos < list.Count)
             {
+
                 if (count == limit)
                 {
                     count = 0;
