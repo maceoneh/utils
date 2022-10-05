@@ -492,6 +492,11 @@ namespace es.dmoreno.utils.permissions
             }
         }
 
+        private class AuxList<T> {
+            public List<T> List { get; set; } = null;
+            public List<T> SortedList { get; set; } = null;
+        }
+
         /// <summary>
         /// Elimina los registros de una lista de los que el usuario indicado no tiene permisos de visualizacion
         /// </summary>
@@ -513,7 +518,16 @@ namespace es.dmoreno.utils.permissions
             }
             //Se obtienen detalles del tipo de datos del listado
             var first_reg = list[0];
+            if (!(first_reg is IDataPermission))
+            {
+                throw new Exception(first_reg.GetType().Name + " must follow the IDataPermission interface");
+            }            
             var table_att = first_reg.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            //Se lanza una tarea para que vaya ordenador la lista
+            var aux_list = new AuxList<T> { List = list };
+            var task_order_list = Task.Factory.StartNew((o) => {
+                ((AuxList<T>)o).SortedList = ((AuxList<T>)o).List.OrderBy(reg => ((IDataPermission)reg).IDRecord).ToList();
+            }, aux_list);
             //Se comprueba si existe tabla con permisos,si no existe se devuelve toda la lista
             var table_record_permissions = await this.GetFilenameFromTablePermission(table_att.Name);
             if (table_record_permissions == null)
@@ -571,30 +585,25 @@ namespace es.dmoreno.utils.permissions
                     
                 });
             }
-
-
-
-
-
-
-
-
-
-
-            int pos = 0;
-            var count = 0;
-            //Se obtienen las primary keys y los metodos para leer los campos
-
-            while (pos < list.Count)
+            //Se espera hasta que la lista original este ordenada
+            task_order_list.Wait();
+            //Se comparan la lista de permisos con la lista de registros para eliminar de la ultima los que el usuario no debe ver
+            var count = list_data_permissions.Count > aux_list.SortedList.Count ? aux_list.SortedList.Count : list_data_permissions.Count;
+            var list_count = 0;
+            var new_list = new List<T>(count);
+            for (int i = 0; i < count; i++)
             {
+                var item_permission = list_data_permissions[i];
+                var item_data = aux_list.SortedList[list_count];
 
-                if (count == limit)
+                if (item_permission.IdentityRecord == ((IDataPermission)item_data).IDRecord)
                 {
-                    count = 0;
+                    new_list.Add(item_data);
+                    list_count++;
                 }
             }
 
-            return null;
+            return new_list;
         }
 
         protected virtual void Dispose(bool disposing)
