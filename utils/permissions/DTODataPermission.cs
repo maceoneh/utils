@@ -11,10 +11,12 @@ namespace es.dmoreno.utils.permissions
     {
         public const string TAG = "DTODataPermission";
         public const string FilterIdentityRecord = TAG + "IdentityRecord";
+        public const string SortIdentityRecord = TAG + "IdentityRecord";
         public const string IdxIdentityRecord = TAG + "IdentityRecord";
         public const string FilterRefPermission = TAG + "RefPermission";
         public const string IdxRefPermission = TAG + "RefPermission";
 
+        [Sortable(Name = SortIdentityRecord)]
         [Filter(Name = FilterIdentityRecord)]
         [Field(FieldName = "identity_record", IsPrimaryKey = true, Type = ParamType.String)]
         public string IdentityRecord { get; set; }

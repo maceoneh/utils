@@ -224,71 +224,83 @@ namespace es.dmoreno.utils.dataaccess.db
             return sql;
         }
 
-        static internal ClassDBProperties getProperties(object registry, List<ClassDBProperties> PropertiesList)
-        {
-            foreach (var item in PropertiesList)
-            {
-                if (item.Type == registry.GetType())
-                {
-                    return item;
-                }
-            }
+        //static internal ClassDBProperties getProperties(object registry, List<ClassDBProperties> PropertiesList)
+        //{
+        //    foreach (var item in PropertiesList)
+        //    {
+        //        if (item.Type == registry.GetType())
+        //        {
+        //            return item;
+        //        }
+        //    }
 
-            var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+        //    var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
 
-            var p = new ClassDBProperties
-            {
-                Properties = Utils.getPropertyInfos(registry, true),
-                Type = registry.GetType(),
-                TableName = table_att.Name
-            };
+        //    var p = new ClassDBProperties
+        //    {
+        //        Properties = Utils.getPropertyInfos(registry, true),
+        //        Type = registry.GetType(),
+        //        TableName = table_att.Name
+        //    };
 
-            p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
-            foreach (var item in p.Properties)
-            {
-                p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
-            }
+        //    p.DBSortableAttributes = new List<SortableAttribute>();
+        //    p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
+        //    foreach (var item in p.Properties)
+        //    {
+        //        p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
+        //        var sort_attrib = item.GetCustomAttribute<SortableAttribute>();
+        //        if (sort_attrib != null)
+        //        {
+        //            p.DBSortableAttributes.Add(sort_attrib);
+        //        }
+        //    }
 
-            p.DBFiltersAttributes = FilterUtils.getFiltersSchema(registry);
+        //    p.DBFiltersAttributes = FilterUtils.getFiltersSchema(registry);
 
-            PropertiesList.Add(p);
+        //    PropertiesList.Add(p);
 
-            return p;
-        }
+        //    return p;
+        //}
 
-        static internal ClassDBProperties getProperties<T>(List<ClassDBProperties> PropertiesList) where T : class, new()
-        {
-            foreach (var item in PropertiesList)
-            {
-                if (item.Type == typeof(T))
-                {
-                    return item;
-                }
-            }
+        //static internal ClassDBProperties getProperties<T>(List<ClassDBProperties> PropertiesList) where T : class, new()
+        //{
+        //    foreach (var item in PropertiesList)
+        //    {
+        //        if (item.Type == typeof(T))
+        //        {
+        //            return item;
+        //        }
+        //    }
 
-            var t = new T();
+        //    var t = new T();
 
-            var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+        //    var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
 
-            var p = new ClassDBProperties
-            {
-                Properties = Utils.getPropertyInfos<T>(t, true),
-                Type = typeof(T),
-                TableName = table_att.Name
-            };
+        //    var p = new ClassDBProperties
+        //    {
+        //        Properties = Utils.getPropertyInfos<T>(t, true),
+        //        Type = typeof(T),
+        //        TableName = table_att.Name
+        //    };
 
-            p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
-            foreach (var item in p.Properties)
-            {
-                p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
-            }
+        //    p.DBSortableAttributes = new List<SortableAttribute>();
+        //    p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
+        //    foreach (var item in p.Properties)
+        //    {
+        //        p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
+        //        var sort_attrib = item.GetCustomAttribute<SortableAttribute>();
+        //        if (sort_attrib != null)
+        //        {
+        //            p.DBSortableAttributes.Add(sort_attrib);
+        //        }
+        //    }
 
-            p.DBFiltersAttributes = FilterUtils.getFiltersSchema<T>();
+        //    p.DBFiltersAttributes = FilterUtils.getFiltersSchema<T>();
 
-            PropertiesList.Add(p);
+        //    PropertiesList.Add(p);
 
-            return p;
-        }
+        //    return p;
+        //}
 
         static internal List<DBRegistryLinkData> getSetters<T>(bool only_from_pks = false) where T : class, new()
         {
@@ -439,10 +451,21 @@ namespace es.dmoreno.utils.dataaccess.db
                 TableName = table_att.Name
             };
 
+            p.DBSortableAttributes = new List<SortableAttribute>();
             p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
             foreach (var item in p.Properties)
             {
-                p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
+                var field_attrib = item.GetCustomAttribute<FieldAttribute>();
+                p.DBFieldAttributes.Add(field_attrib);
+                var sort_attrib = item.GetCustomAttribute<SortableAttribute>();
+                if (sort_attrib != null)
+                {
+                    if (string.IsNullOrWhiteSpace(sort_attrib.FieldName))
+                    {
+                        sort_attrib.FieldName = field_attrib.FieldName;
+                    }
+                    p.DBSortableAttributes.Add(sort_attrib);
+                }
             }
 
             p.DBFiltersAttributes = getFiltersSchema(registry);
@@ -473,10 +496,21 @@ namespace es.dmoreno.utils.dataaccess.db
                 TableName = table_att.Name
             };
 
+            p.DBSortableAttributes = new List<SortableAttribute>();
             p.DBFieldAttributes = new List<FieldAttribute>(p.Properties.Count);
             foreach (var item in p.Properties)
             {
-                p.DBFieldAttributes.Add(item.GetCustomAttribute<FieldAttribute>());
+                var field_attrib = item.GetCustomAttribute<FieldAttribute>();
+                p.DBFieldAttributes.Add(field_attrib);
+                var sort_attrib = item.GetCustomAttribute<SortableAttribute>();
+                if (sort_attrib != null)
+                {
+                    if (string.IsNullOrWhiteSpace(sort_attrib.FieldName))
+                    {
+                        sort_attrib.FieldName = field_attrib.FieldName;
+                    }
+                    p.DBSortableAttributes.Add(sort_attrib);
+                }
             }
 
             p.DBFiltersAttributes = getFiltersSchema<T>();

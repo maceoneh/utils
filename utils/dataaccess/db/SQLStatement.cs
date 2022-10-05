@@ -24,6 +24,7 @@ namespace es.dmoreno.utils.dataaccess.db
             public string SQL { get; set; }
             public string SELECT { get; set; }
             public string WHERE { get; set; }
+            public string ORDERBY { get; set; }
             public List<StatementParameter> Params { get; set; }
             public List<StatementParameter> FilterParams { get; set; }
         }
@@ -887,7 +888,7 @@ namespace es.dmoreno.utils.dataaccess.db
             return c;
         }
 
-        private ConfigStatement getConfigSelect(object registry, bool withoutwhere = false, List<Filter> filters = null)
+        private ConfigStatement getConfigSelect(object registry, bool withoutwhere = false, List<Filter> filters = null, List<Order> orders = null)
         {
             ConfigStatement c;
             List<string> fields;
@@ -902,6 +903,8 @@ namespace es.dmoreno.utils.dataaccess.db
             c = new ConfigStatement() { SQL = "", Params = new List<StatementParameter>() };
             fields = new List<string>();
             fields_pk = new List<string>();
+
+            var properties = Utils.getProperties(registry);
 
             //Get table attribute from class
             table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
@@ -1070,6 +1073,27 @@ namespace es.dmoreno.utils.dataaccess.db
             c.SELECT = string.Format(c.SQL, table_att.Name, aux, "", "");
             c.SQL = string.Format(c.SQL, table_att.Name, aux, aux2, aux3);
             c.WHERE = aux3;
+            c.ORDERBY = "";
+            if (orders != null)
+            {                
+                for (int i = 0; i < orders.Count; i++)
+                {
+                    var order_attrib = properties.DBSortableAttributes.Where(reg => reg.Name == orders[i].Name).FirstOrDefault();
+                    c.ORDERBY += order_attrib.FieldName;
+                    if (orders[i].OrderType == EOrderType.Asc)
+                    {
+                        c.ORDERBY += " ASC";
+                    }
+                    else
+                    {
+                        c.ORDERBY += " DESC";
+                    }
+                    if (i < orders.Count - 1)
+                    {
+                        c.ORDERBY += ",";
+                    }
+                }
+            }
 
             return c;
         }
@@ -1566,7 +1590,7 @@ namespace es.dmoreno.utils.dataaccess.db
             await this.Semaphore.WaitAsync();
             try
             {
-                c = this.getConfigSelect(new T(), true, options.Filters);
+                c = this.getConfigSelect(new T(), true, options.Filters, options.Orders);
 
                 if (options.Parameters != null)
                 {
@@ -1578,7 +1602,7 @@ namespace es.dmoreno.utils.dataaccess.db
                     this.addParameters(c.Params);
                 }
 
-                using (SQLData d = await this.executeAsync(Utils.buildSQLStatement(this.sgbd, c.SELECT, options.Filters == null ? options.SQL : c.WHERE, options.OrderBy, options.LimitTo, options.LimitLength)))
+                using (SQLData d = await this.executeAsync(Utils.buildSQLStatement(this.sgbd, c.SELECT, options.Filters == null ? options.SQL : c.WHERE, options.Orders == null ? options.OrderBy : c.ORDERBY, options.LimitTo, options.LimitLength)))
                 {
                     result = d.fillToList<T>();
                 }
@@ -1615,7 +1639,7 @@ namespace es.dmoreno.utils.dataaccess.db
             await this.Semaphore.WaitAsync();
             try
             {
-                c = this.getConfigSelect(new T(), true, options.Filters);
+                c = this.getConfigSelect(new T(), true, options.Filters, options.Orders);
 
                 if (options.Parameters != null)
                 {
@@ -1627,7 +1651,7 @@ namespace es.dmoreno.utils.dataaccess.db
                     this.addParameters(c.Params);
                 }
 
-                using (SQLData d = await this.executeAsync(Utils.buildSQLStatement(this.sgbd, c.SELECT, options.Filters == null ? options.SQL : c.WHERE, options.OrderBy)))
+                using (SQLData d = await this.executeAsync(Utils.buildSQLStatement(this.sgbd, c.SELECT, options.Filters == null ? options.SQL : c.WHERE, options.Orders == null ? options.OrderBy : c.ORDERBY)))
                 {
 
                     if (d.next())

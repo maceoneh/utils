@@ -13,5 +13,6 @@ namespace es.dmoreno.utils.dataaccess.db
         public List<PropertyInfo> Properties;
         public List<FieldAttribute> DBFieldAttributes;
         public List<FieldFilterSchema> DBFiltersAttributes;
+        public List<SortableAttribute> DBSortableAttributes;
     }
 }

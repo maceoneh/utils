@@ -304,84 +304,84 @@ namespace es.dmoreno.utils.permissions
         //private async Task<bool> SQLiteCreateTablePermissions<T>(TableInfo info) where T : class, new()
         //{
 
-            //var t = new T();
-            ////Se obtienen los datos de la tabla
-            //var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
-            ////Se crea una conexion a la base de datos con el sufijo _permissions
-            //var table_file = table_att.Name + "_permissions";
-            //var db_path = Path.Combine(this._Path, table_file + ".db");
-            //using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = db_path }))
-            //{
-            //    var table_exists = false;
-            //    //Se comprueba si existe la tabla
-            //    var sql = "SELECT * FROM " + table_att.Name + " LIMIT 1";
-            //    try
-            //    {
-            //        await db.Statement.executeAsync(sql);
-            //        table_exists = true;
-            //    }
-            //    catch (SqliteException ex)
-            //    {
-            //        //Microsoft.Data.Sqlite.SqliteException: 'SQLite Error 1: 'no such table: messages_permissions'.'
-            //        if (ex.SqliteErrorCode == 1)
-            //        {
-            //            if (!ex.Message.StartsWith("SQLite Error 1: 'no such table: "))
-            //            {
-            //                throw;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            throw;
-            //        }
-            //    }
-            //    //Si la tabla no existe se crea con los campos de clave primaria y referencia al permiso
-            //    if (!table_exists)
-            //    {
-            //        sql = "CREATE TABLE " + table_att.Name + " (";
-            //        //Se obtienen las PK de la clase
-            //        var pks = UtilsDB.getFieldAttributes(UtilsDB.getPropertyInfos<T>(t, true)).Where(a => a.IsPrimaryKey).ToList();
-            //        //Se desactiva el autoincrement
-            //        foreach (var item in pks)
-            //        {
-            //            item.IsAutoincrement = false;
-            //        }
-            //        if (pks.Count == 1)
-            //        {
-            //            sql += " " + SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[0], true);
-            //        }
-            //        else
-            //        {
-            //            for (int i = 0; i < pks.Count; i++)
-            //            {
-            //                sql += SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[i], false) + ", ";
-            //            }
+        //var t = new T();
+        ////Se obtienen los datos de la tabla
+        //var table_att = t.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+        ////Se crea una conexion a la base de datos con el sufijo _permissions
+        //var table_file = table_att.Name + "_permissions";
+        //var db_path = Path.Combine(this._Path, table_file + ".db");
+        //using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = db_path }))
+        //{
+        //    var table_exists = false;
+        //    //Se comprueba si existe la tabla
+        //    var sql = "SELECT * FROM " + table_att.Name + " LIMIT 1";
+        //    try
+        //    {
+        //        await db.Statement.executeAsync(sql);
+        //        table_exists = true;
+        //    }
+        //    catch (SqliteException ex)
+        //    {
+        //        //Microsoft.Data.Sqlite.SqliteException: 'SQLite Error 1: 'no such table: messages_permissions'.'
+        //        if (ex.SqliteErrorCode == 1)
+        //        {
+        //            if (!ex.Message.StartsWith("SQLite Error 1: 'no such table: "))
+        //            {
+        //                throw;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            throw;
+        //        }
+        //    }
+        //    //Si la tabla no existe se crea con los campos de clave primaria y referencia al permiso
+        //    if (!table_exists)
+        //    {
+        //        sql = "CREATE TABLE " + table_att.Name + " (";
+        //        //Se obtienen las PK de la clase
+        //        var pks = UtilsDB.getFieldAttributes(UtilsDB.getPropertyInfos<T>(t, true)).Where(a => a.IsPrimaryKey).ToList();
+        //        //Se desactiva el autoincrement
+        //        foreach (var item in pks)
+        //        {
+        //            item.IsAutoincrement = false;
+        //        }
+        //        if (pks.Count == 1)
+        //        {
+        //            sql += " " + SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[0], true);
+        //        }
+        //        else
+        //        {
+        //            for (int i = 0; i < pks.Count; i++)
+        //            {
+        //                sql += SQLiteManagement.getCreateFieldSQLite(db.Statement, pks[i], false) + ", ";
+        //            }
 
-            //            sql += " PRIMARY KEY (";
-            //            for (int i = 0; i < pks.Count; i++)
-            //            {
-            //                sql += pks[i].FieldName;
+        //            sql += " PRIMARY KEY (";
+        //            for (int i = 0; i < pks.Count; i++)
+        //            {
+        //                sql += pks[i].FieldName;
 
-            //                if (i < pks.Count - 1)
-            //                {
-            //                    sql += ", ";
-            //                }
-            //            }
-            //            sql += ")";
-            //        }
-            //        //Se agrega el campo de referencia al permiso
-            //        sql += ", ref_permission INTEGER)";
-            //        //Se lanza la consulta para crear la table
-            //        await db.Statement.executeNonQueryAsync(sql);
-            //        info.Name = table_att.Name;
-            //        info.FileName = table_file + ".db";
-            //        return true;
-            //    }
-            //    else
-            //    {
-            //        return false;
-            //    }
-            //}
+        //                if (i < pks.Count - 1)
+        //                {
+        //                    sql += ", ";
+        //                }
+        //            }
+        //            sql += ")";
+        //        }
+        //        //Se agrega el campo de referencia al permiso
+        //        sql += ", ref_permission INTEGER)";
+        //        //Se lanza la consulta para crear la table
+        //        await db.Statement.executeNonQueryAsync(sql);
+        //        info.Name = table_att.Name;
+        //        info.FileName = table_file + ".db";
+        //        return true;
+        //    }
+        //    else
+        //    {
+        //        return false;
+        //    }
+        //}
         //}
 
         /// <summary>
@@ -431,8 +431,9 @@ namespace es.dmoreno.utils.permissions
                 using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_info.File) }))
                 {
                     var id_record = (registry as IDataPermission).IDRecord;
-                    var data_permission = await db.Statement.FirstIfExistsAsync<DTODataPermission>(new StatementOptions { 
-                        Filters = new List<Filter> { 
+                    var data_permission = await db.Statement.FirstIfExistsAsync<DTODataPermission>(new StatementOptions
+                    {
+                        Filters = new List<Filter> {
                             new Filter { Name = DTODataPermission.FilterIdentityRecord, ObjectValue = id_record, Type = FilterType.Equal }
                         }
                     });
@@ -557,50 +558,21 @@ namespace es.dmoreno.utils.permissions
                 ref_permissions.Add(item.ID);
             }
             //Se buscan los registros en la tabla de permisos a los que el usuario tiene permisos
-            var sql = "SELECT ";
-            var pks = UtilsDB.getGetters<T>(true);
-            for (int i = 0; i < pks.Count; i++)
-            {
-                var item = pks[i];
-                sql += item.FieldAttributes.FieldName;
-                if (i < pks.Count - 2)
-                {
-                    sql += ",";
-                }
-            }
-            sql += " FROM " + table_att.Name + " WHERE ref_permission IN (";
-            for (int i = 0; i < ref_permissions.Count; i++)
-            {
-                var item = ref_permissions[i];
-                sql += item.ToString();
-                if (i < ref_permissions.Count - 2)
-                {
-                    sql += ",";
-                }
-            }
-            sql += ") ORDER BY";
-            for (int i = 0; i < pks.Count; i++)
-            {
-                var item = pks[i];
-                sql += " " + item.FieldAttributes.FieldName + " ASC";
-                if (i < pks.Count - 2)
-                {
-                    sql += ",";
-                }
-            }
-            
+            List<DTODataPermission> list_data_permissions = null;
             using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_record_permissions.File) }))
             {
-                var dataset = await db.Statement.executeAsync(sql);
-                if (dataset.next())
-                {
-                    do
-                    {
-
+                list_data_permissions = await db.Statement.selectAsync<DTODataPermission>(new StatementOptions { 
+                    Filters = new List<Filter> { 
+                        new Filter { Name = DTODataPermission.FilterRefPermission, ObjectValue = ref_permissions, Type = FilterType.In }
+                    },
+                    Orders = new List<Order> { 
+                        new Order { Name = DTODataPermission.SortIdentityRecord, OrderType = EOrderType.Asc }
                     }
-                    while (dataset.next());
-                }
+                    
+                });
             }
+
+
 
 
 
