@@ -627,7 +627,8 @@ namespace es.dmoreno.utils.permissions
                 }
             }
             //Se busca el permiso
-            var permission = await this.DBLogic.Statement.FirstIfExistsAsync<DTORecordPermission>(new StatementOptions
+            var db_record_permission = await this.DBLogic.ProxyStatement<DTORecordPermission>();
+            var permission = await db_record_permission.FirstIfExistsAsync<DTORecordPermission>(new StatementOptions
             {
                 Filters = new List<Filter> {
                     new Filter { Name = DTORecordPermission.FilterID, ObjectValue = ref_permission, Type = FilterType.Equal }
