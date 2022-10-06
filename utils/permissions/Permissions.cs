@@ -542,7 +542,7 @@ namespace es.dmoreno.utils.permissions
                 return list;
             }
             //Se obtienen los permisos que lo tienen como owner
-            var owners = list_permissions.Where(reg => reg.Entity == UUID).ToList();
+            var owners = list_permissions.Where(reg => reg.UUIDOwner == UUID).ToList();
             //Se obtienen los permisos que lo referencian con permiso de lectura
             var can_read_permission = list_permissions.Where(reg => reg.UUIDRecordPermissions.Where(record => record.UUID == UUID && record.CanRead == true).Count() > 0).ToList();
             //Se obtienen los permisos de los grupos a los que pertenece            
@@ -552,7 +552,7 @@ namespace es.dmoreno.utils.permissions
             var list_subject_pertain_group = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions
             {
                 Filters = new List<Filter>() {
-                    new Filter { Name = DTOSubjectPertainGroup.FilterRefGroup, ObjectValue = UUID, Type = FilterType.Equal }
+                    new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = UUID, Type = FilterType.Equal }
                 }
             });
             var groups = new List<string>();
@@ -593,13 +593,22 @@ namespace es.dmoreno.utils.permissions
             var new_list = new List<T>(count);
             for (int i = 0; i < count; i++)
             {
-                var item_permission = list_data_permissions[i];
-                var item_data = aux_list.SortedList[list_count];
-
-                if (item_permission.IdentityRecord == ((IDataPermission)item_data).IDRecord)
+                var item_permission = list_data_permissions[i];                
+                while (list_count < aux_list.SortedList.Count)
                 {
-                    new_list.Add(item_data);
+                    var item_data = aux_list.SortedList[list_count];
+                    if (item_permission.IdentityRecord == ((IDataPermission)item_data).IDRecord)
+                    {
+                        new_list.Add(item_data);
+                        list_count++;
+                        break;
+                    }
                     list_count++;
+                }
+                //si antes de terminar el bucle se ha llegado al final de list se sale
+                if (list_count == aux_list.SortedList.Count)
+                {
+                    break;
                 }
             }
 
