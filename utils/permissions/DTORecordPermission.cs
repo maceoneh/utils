@@ -1,4 +1,5 @@
 ﻿using es.dmoreno.utils.dataaccess.db;
+using es.dmoreno.utils.dataaccess.filters;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,9 +10,13 @@ namespace es.dmoreno.utils.permissions
     [Table(Name = "record_permissions", FilePerTable = true)]
     public class DTORecordPermission
     {
+        public const string TAG = "DTORecordPermission";
+        public const string FilterID = TAG + "ID";
+
         //private string ValueUUIDPermission = null;
         private DTOUUIDRecordPermision[] ValueUUIDPermission = null;
 
+        [Filter(Name = FilterID)]
         [Field(FieldName = "id", IsAutoincrement = true, IsPrimaryKey = true, Type = ParamType.Int32)]
         internal int ID { get; set; }
 
@@ -26,8 +31,7 @@ namespace es.dmoreno.utils.permissions
         {
             get
             {
-                return JsonSerializer.Serialize<DTOUUIDRecordPermision[]>(this.ValueUUIDPermission);
-                //return this.ValueUUIDPermission;
+                return JsonSerializer.Serialize<DTOUUIDRecordPermision[]>(this.ValueUUIDPermission);                
             }
             set
             {
@@ -39,16 +43,6 @@ namespace es.dmoreno.utils.permissions
                 {
                     this.ValueUUIDPermission = JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(value);
                 }
-                //try
-                //{
-
-                //var o = JsonSerializer.Deserialize<DTOUUIDRecordPermision[]>(value);
-                //if (o != null)
-                //{
-                //    this.ValueUUIDPermission = o;
-                //}
-                //}
-                //catch { }
             }
         }
 
@@ -57,12 +51,10 @@ namespace es.dmoreno.utils.permissions
             get
             {
                 return this.ValueUUIDPermission;
-                //return JsonSerializer.Deserialize<DTOUUIDRecordPermision[]?>(this.ValueUUIDPermission);
             }
             set
             {
                 this.ValueUUIDPermission = value;
-                //this.ValueUUIDPermission = JsonSerializer.Serialize(value);
             }
         }
 

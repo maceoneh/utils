@@ -7,5 +7,6 @@ namespace es.dmoreno.utils.permissions
     public class PermissionException : Exception
     {
         public PermissionException(string msg) : base(msg) { }
+        public PermissionException() : base() { }
     }
 }

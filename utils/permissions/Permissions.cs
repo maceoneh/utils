@@ -484,11 +484,12 @@ namespace es.dmoreno.utils.permissions
             if (!(first_reg is IDataPermission))
             {
                 throw new Exception(first_reg.GetType().Name + " must follow the IDataPermission interface");
-            }            
+            }
             var table_att = first_reg.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
             //Se lanza una tarea para que vaya ordenador la lista
             var aux_list = new AuxList<T> { List = list };
-            var task_order_list = Task.Factory.StartNew((o) => {
+            var task_order_list = Task.Factory.StartNew((o) =>
+            {
                 ((AuxList<T>)o).SortedList = ((AuxList<T>)o).List.OrderBy(reg => ((IDataPermission)reg).IDRecord).ToList();
             }, aux_list);
             //Se comprueba si existe tabla con permisos,si no existe se devuelve toda la lista
@@ -538,14 +539,15 @@ namespace es.dmoreno.utils.permissions
             List<DTODataPermission> list_data_permissions = null;
             using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_record_permissions.File) }))
             {
-                list_data_permissions = await db.Statement.selectAsync<DTODataPermission>(new StatementOptions { 
-                    Filters = new List<Filter> { 
+                list_data_permissions = await db.Statement.selectAsync<DTODataPermission>(new StatementOptions
+                {
+                    Filters = new List<Filter> {
                         new Filter { Name = DTODataPermission.FilterRefPermission, ObjectValue = ref_permissions, Type = FilterType.In }
                     },
-                    Orders = new List<Order> { 
+                    Orders = new List<Order> {
                         new Order { Name = DTODataPermission.SortIdentityRecord, OrderType = EOrderType.Asc }
                     }
-                    
+
                 });
             }
             //Se espera hasta que la lista original este ordenada
@@ -556,7 +558,7 @@ namespace es.dmoreno.utils.permissions
             var new_list = new List<T>(count);
             for (int i = 0; i < count; i++)
             {
-                var item_permission = list_data_permissions[i];                
+                var item_permission = list_data_permissions[i];
                 while (list_count < aux_list.SortedList.Count)
                 {
                     var item_data = aux_list.SortedList[list_count];
@@ -576,6 +578,132 @@ namespace es.dmoreno.utils.permissions
             }
 
             return new_list;
+        }
+
+        /// <summary>
+        /// Dado un registro obtiene si el usuario asociado al uuid indicado tiene permisos, devuelve siempre el caso mas favorable
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="registry"></param>
+        /// <param name="UUID"></param>
+        /// <returns></returns>
+        /// <exception cref="PermissionException"></exception>
+        public async Task<DTORecordPermission> GetDataPermission(object registry, string UUID)
+        {
+            if (registry == null)
+            {
+                return null;
+            }
+            if (!(registry is IDataPermission))
+            {
+                throw new PermissionException(registry.GetType().Name + " must follow the IDataPermission interface");
+            }
+            //Se obtiene información sobre la tabla de permisos
+            var table_att = registry.GetType().GetTypeInfo().GetCustomAttribute<TableAttribute>();
+            var table_record_permissions = await this.GetFileInfoFromTablePermission(table_att.Name);
+            //Si no existe esa informacion se devuelve al UUID como creador ya que en este contexto todo es de todos
+            if (table_record_permissions == null)
+            {
+                return new DTORecordPermission { Entity = table_att.Name, UUIDOwner = UUID };
+            }
+            //Se busca la referencia al permiso del registro
+            var ref_permission = int.MinValue;
+            using (var db = new DataBaseLogic(new ConnectionParameters { Type = DBMSType.SQLite, File = Path.Combine(this._Path, table_record_permissions.File) }))
+            {
+                var record_permission = await db.Statement.FirstIfExistsAsync<DTODataPermission>(new StatementOptions
+                {
+                    Filters = new List<Filter> {
+                        new Filter { Name = DTODataPermission.FilterIdentityRecord, ObjectValue = (registry as IDataPermission).IDRecord, Type = FilterType.Equal }
+                    }
+                });
+                if (record_permission != null)
+                {
+                    ref_permission = record_permission.RefPermission;
+                }
+                else
+                {
+                    //Si no encuentra registro devuelve que es el OWNER
+                    return new DTORecordPermission { Entity = table_att.Name, UUIDOwner = UUID };
+                }
+            }
+            //Se busca el permiso
+            var permission = await this.DBLogic.Statement.FirstIfExistsAsync<DTORecordPermission>(new StatementOptions
+            {
+                Filters = new List<Filter> {
+                    new Filter { Name = DTORecordPermission.FilterID, ObjectValue = ref_permission, Type = FilterType.Equal }
+                }
+            });
+            //No deberia de pasar
+            if (permission == null)
+            {
+                throw new PermissionException("Registry of entity " + registry.GetType().Name + " cant resolve permission with id = " + ref_permission.ToString());
+            }
+            //Se obtiene el resultado mas favorable para el usuario
+            if (permission.UUIDOwner == UUID)
+            {
+                return new DTORecordPermission { Entity = permission.Entity, UUIDOwner = UUID };
+            }
+            else
+            {
+                var uuid_permission = new DTOUUIDRecordPermision { UUID = UUID, CanDelete = false, CanRead = false, CanWrite = false };
+                if (permission.UUIDRecordPermissions != null)
+                {
+                    //Se obtienen los permisos de los grupos a los que pertenece            
+                    var db_groups = await this.DBLogic.ProxyStatement<DTOGroup>();
+                    var list_groups = await db_groups.selectAsync<DTOGroup>();
+                    var db_subject_pertain_group = await this.DBLogic.ProxyStatement<DTOSubjectPertainGroup>();
+                    var list_subject_pertain_group = await db_subject_pertain_group.selectAsync<DTOSubjectPertainGroup>(new StatementOptions
+                    {
+                        Filters = new List<Filter>() {
+                            new Filter { Name = DTOSubjectPertainGroup.FilterRemoteUUID, ObjectValue = UUID, Type = FilterType.Equal }
+                        }
+                    });
+
+                    foreach (var item in permission.UUIDRecordPermissions)
+                    {
+                        //Existe una referencia al propio uuid que se consulta
+                        if (item.UUID == UUID)
+                        {
+                            if (item.CanRead)
+                            {
+                                uuid_permission.CanRead = true;
+                            }
+                            if (item.CanDelete)
+                            {
+                                uuid_permission.CanDelete = true;
+                            }
+                            if (item.CanWrite)
+                            {
+                                uuid_permission.CanWrite = true;
+                            }
+                        }
+                        else
+                        {
+                            //Se comprueba si pertenece a algun grupo asociado al permiso
+                            foreach (var item_group in list_subject_pertain_group)
+                            {
+                                var group = list_groups.Where(reg => reg.ID == item_group.RefGroup).FirstOrDefault();
+                                if (item.UUID == group.RemoteUUID)
+                                {
+                                    if (item.CanRead)
+                                    {
+                                        uuid_permission.CanRead = true;
+                                    }
+                                    if (item.CanDelete)
+                                    {
+                                        uuid_permission.CanDelete = true;
+                                    }
+                                    if (item.CanWrite)
+                                    {
+                                        uuid_permission.CanWrite = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                return new DTORecordPermission { Entity = permission.Entity, UUIDOwner = permission.UUIDOwner, UUIDRecordPermissions = new DTOUUIDRecordPermision[] { uuid_permission } };
+            }
         }
 
         protected virtual void Dispose(bool disposing)
