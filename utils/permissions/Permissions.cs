@@ -588,7 +588,7 @@ namespace es.dmoreno.utils.permissions
         /// <param name="UUID"></param>
         /// <returns></returns>
         /// <exception cref="PermissionException"></exception>
-        public async Task<DTORecordPermission> GetDataPermission(object registry, string UUID)
+        public async Task<DTORecordPermission> GetDataPermissionAsync(object registry, string UUID)
         {
             if (registry == null)
             {
@@ -705,6 +705,57 @@ namespace es.dmoreno.utils.permissions
                 }
                 return new DTORecordPermission { Entity = permission.Entity, UUIDOwner = permission.UUIDOwner, UUIDRecordPermissions = new DTOUUIDRecordPermision[] { uuid_permission } };
             }
+        }
+
+        /// <summary>
+        /// Indica si el registro puede ser leido por el usuario uuid
+        /// </summary>
+        /// <param name="registry"></param>
+        /// <param name="UUID"></param>
+        /// <returns></returns>
+        public async Task<bool> CheckCanReadPermissionAsync(object registry, string UUID, bool throw_exception = true)
+        {
+            var permission = await GetDataPermissionAsync(registry, UUID);
+            var read = permission.UUIDOwner == UUID ? true : (permission.UUIDRecordPermissions[0].CanRead);
+            if (throw_exception && !read)
+            {
+                throw new PermissionException("Access denied for user with UUID " + UUID);
+            }
+            return read;
+        }
+
+        /// <summary>
+        /// Indica si el registro puede ser modificado por el usuario uuid
+        /// </summary>
+        /// <param name="registry"></param>
+        /// <param name="UUID"></param>
+        /// <returns></returns>
+        public async Task<bool> CheckCanWritePermissionAsync(object registry, string UUID, bool throw_exception = true)
+        {
+            var permission = await GetDataPermissionAsync(registry, UUID);
+            var write = permission.UUIDOwner == UUID ? true : (permission.UUIDRecordPermissions[0].CanWrite);
+            if (throw_exception && !write)
+            {
+                throw new PermissionException("Permission denied for user with UUID " + UUID);
+            }
+            return write;
+        }
+
+        /// <summary>
+        /// Indica si el registro puede ser borrado por el usuario uuid
+        /// </summary>
+        /// <param name="registry"></param>
+        /// <param name="UUID"></param>
+        /// <returns></returns>
+        public async Task<bool> CheckCanDeletePermissionAsync(object registry, string UUID, bool throw_exception = true)
+        {
+            var permission = await GetDataPermissionAsync(registry, UUID);
+            var delete = permission.UUIDOwner == UUID ? true : (permission.UUIDRecordPermissions[0].CanDelete);
+            if (throw_exception && !delete)
+            {
+                throw new PermissionException("Permission denied for user with UUID " + UUID);
+            }
+            return delete;
         }
 
         protected virtual void Dispose(bool disposing)
